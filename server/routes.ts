@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertProductSchema, insertVroomSchema, insertOrderSchema, insertMessageSchema } from "@shared/schema";
+import { insertProductSchema, insertVroomSchema, insertOrderSchema, insertMessageSchema, updateProfileSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -21,6 +21,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Profile routes
+  app.get('/api/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profileData = await storage.getUserProfile(userId);
+      
+      if (!profileData) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+      
+      res.json(profileData);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put('/api/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profileData = updateProfileSchema.parse(req.body);
+      
+      const updatedUser = await storage.updateProfile(userId, profileData);
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid profile data", errors: error.errors });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  app.get('/api/products/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const products = await storage.getProductsByUser(userId);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching user products:", error);
+      res.status(500).json({ message: "Failed to fetch user products" });
+    }
+  });
+
+  app.get('/api/vrooms/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vrooms = await storage.getVroomsByUser(userId);
+      res.json(vrooms);
+    } catch (error) {
+      console.error("Error fetching user vrooms:", error);
+      res.status(500).json({ message: "Failed to fetch user vrooms" });
     }
   });
 

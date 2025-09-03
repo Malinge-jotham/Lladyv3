@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import Vroom from "@/pages/vroom";
 import Messages from "@/pages/messages";
 import Trending from "@/pages/trending";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
           <Route path="/vroom/:id?" component={Vroom} />
           <Route path="/messages" component={Messages} />
           <Route path="/trending" component={Trending} />
+          <Route path="/profile" component={Profile} />
         </>
       )}
       <Route component={NotFound} />

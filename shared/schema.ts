@@ -34,6 +34,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   username: varchar("username").unique(),
   bio: text("bio"),
+  location: varchar("location"),
+  website: varchar("website"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -224,6 +226,16 @@ export const insertUserSchema = createInsertSchema(users).pick({
   profileImageUrl: true,
   username: true,
   bio: true,
+  location: true,
+  website: true,
+});
+
+export const updateProfileSchema = createInsertSchema(users).pick({
+  firstName: true,
+  lastName: true,
+  bio: true,
+  location: true,
+  website: true,
 });
 
 export const insertVroomSchema = createInsertSchema(vrooms).pick({
@@ -259,6 +271,7 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 export type InsertVroom = z.infer<typeof insertVroomSchema>;
 export type Vroom = typeof vrooms.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;

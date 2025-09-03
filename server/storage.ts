@@ -12,6 +12,7 @@ import {
   messages,
   type User,
   type UpsertUser,
+  type UpdateProfile,
   type Vroom,
   type InsertVroom,
   type Product,
@@ -29,6 +30,8 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateProfile(userId: string, profile: UpdateProfile): Promise<User>;
+  getUserProfile(userId: string): Promise<{ user: User; followers: number; following: number } | undefined>;
   
   // Product operations
   createProduct(userId: string, product: InsertProduct): Promise<Product>;
@@ -101,6 +104,36 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateProfile(userId: string, profile: UpdateProfile): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async getUserProfile(userId: string): Promise<{ user: User; followers: number; following: number } | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+
+    const [followersResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(follows)
+      .where(eq(follows.followingId, userId));
+
+    const [followingResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(follows)
+      .where(eq(follows.followerId, userId));
+
+    return {
+      user,
+      followers: Number(followersResult.count),
+      following: Number(followingResult.count),
+    };
   }
 
   // Product operations
@@ -402,6 +435,8 @@ export class DatabaseStorage implements IStorage {
         profileImageUrl: users.profileImageUrl,
         username: users.username,
         bio: users.bio,
+        location: users.location,
+        website: users.website,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       })
@@ -420,6 +455,8 @@ export class DatabaseStorage implements IStorage {
         profileImageUrl: users.profileImageUrl,
         username: users.username,
         bio: users.bio,
+        location: users.location,
+        website: users.website,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       })
