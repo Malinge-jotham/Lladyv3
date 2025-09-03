@@ -255,6 +255,8 @@ export const insertProductSchema = createInsertSchema(products).pick({
   price: true,
   imageUrls: true,
   hashtags: true,
+}).extend({
+  price: z.union([z.string(), z.number()]).transform((val) => String(val)),
 });
 
 export const insertOrderSchema = createInsertSchema(orders).pick({
