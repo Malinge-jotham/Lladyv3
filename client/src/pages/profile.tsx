@@ -16,8 +16,10 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaUsers, FaHeart } from "react-icons/fa";
+import { FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaUsers, FaHeart, FaCamera } from "react-icons/fa";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -49,7 +51,6 @@ export default function Profile() {
       lastName: (user as any)?.lastName || "",
       bio: (profileData as any)?.bio || "",
       location: (profileData as any)?.location || "",
-      website: (profileData as any)?.website || "",
     },
   });
 
@@ -86,6 +87,43 @@ export default function Profile() {
       });
     },
   });
+
+  // Image upload functions
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest('POST', '/api/objects/upload') as { uploadURL: string };
+    return {
+      method: 'PUT' as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleImageUpload = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>, type: 'profile' | 'banner') => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      try {
+        await apiRequest('PUT', '/api/profile/image', {
+          imageURL: uploadedFile.uploadURL,
+          type: type,
+        });
+        
+        toast({
+          title: `${type === 'profile' ? 'Profile' : 'Banner'} image updated`,
+          description: `Your ${type === 'profile' ? 'profile' : 'banner'} image has been updated successfully.`,
+        });
+        
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      } catch (error) {
+        console.error('Error updating image:', error);
+        toast({
+          title: "Error",
+          description: `Failed to update ${type === 'profile' ? 'profile' : 'banner'} image. Please try again.`,
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const onSubmit = (data: any) => {
     updateProfileMutation.mutate(data);
@@ -131,12 +169,22 @@ export default function Profile() {
           <Card className="mb-6" data-testid="profile-header">
             <CardContent className="p-0">
               {/* Cover Image */}
-              <div className="h-48 bg-gradient-to-r from-accent/20 to-primary/20 relative">
+              <div className="h-48 relative overflow-hidden">
+                {(profileData as any)?.user?.bannerImageUrl ? (
+                  <img
+                    src={(profileData as any).user.bannerImageUrl}
+                    alt="Profile Banner"
+                    className="w-full h-full object-cover"
+                    data-testid="profile-banner"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-r from-accent/20 to-primary/20" />
+                )}
                 {/* Profile Image */}
                 <div className="absolute -bottom-12 left-6">
-                  {(user as any)?.profileImageUrl ? (
+                  {(profileData as any)?.user?.profileImageUrl || (user as any)?.profileImageUrl ? (
                     <img
-                      src={(user as any).profileImageUrl}
+                      src={(profileData as any)?.user?.profileImageUrl || (user as any).profileImageUrl}
                       alt="Profile"
                       className="w-24 h-24 rounded-full object-cover border-4 border-background"
                       data-testid="profile-avatar"
@@ -226,19 +274,36 @@ export default function Profile() {
                             </FormItem>
                           )}
                         />
-                        <FormField
-                          control={form.control}
-                          name="website"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Website</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="https://..." data-testid="input-website" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {/* Profile Image Upload */}
+                        <div className="space-y-2">
+                          <Label>Profile Photo</Label>
+                          <ObjectUploader
+                            maxNumberOfFiles={1}
+                            maxFileSize={5 * 1024 * 1024} // 5MB
+                            onGetUploadParameters={handleGetUploadParameters}
+                            onComplete={(result) => handleImageUpload(result, 'profile')}
+                            buttonClassName="w-full"
+                          >
+                            <FaCamera className="w-4 h-4 mr-2" />
+                            Upload Profile Photo
+                          </ObjectUploader>
+                        </div>
+
+                        {/* Banner Image Upload */}
+                        <div className="space-y-2">
+                          <Label>Banner Image</Label>
+                          <ObjectUploader
+                            maxNumberOfFiles={1}
+                            maxFileSize={5 * 1024 * 1024} // 5MB
+                            onGetUploadParameters={handleGetUploadParameters}
+                            onComplete={(result) => handleImageUpload(result, 'banner')}
+                            buttonClassName="w-full"
+                          >
+                            <FaCamera className="w-4 h-4 mr-2" />
+                            Upload Banner Image
+                          </ObjectUploader>
+                        </div>
+
                         <div className="flex gap-3 pt-4">
                           <Button 
                             type="submit" 

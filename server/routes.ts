@@ -79,6 +79,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Object storage routes for profile images
+  app.post('/api/objects/upload', isAuthenticated, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  app.put('/api/profile/image', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { imageURL, type } = req.body;
+      
+      if (!imageURL || !type) {
+        return res.status(400).json({ message: "imageURL and type are required" });
+      }
+
+      if (!['profile', 'banner'].includes(type)) {
+        return res.status(400).json({ message: "type must be 'profile' or 'banner'" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        imageURL,
+        {
+          owner: userId,
+          visibility: "public", // Profile images should be publicly accessible
+        }
+      );
+
+      // Update user profile with the new image
+      const updateData = type === 'profile' 
+        ? { profileImageUrl: objectPath }
+        : { bannerImageUrl: objectPath };
+      
+      const updatedUser = await storage.updateProfile(userId, updateData);
+      
+      res.json({
+        objectPath,
+        user: updatedUser,
+      });
+    } catch (error) {
+      console.error("Error setting profile image:", error);
+      res.status(500).json({ message: "Failed to update profile image" });
+    }
+  });
+
   // Product routes
   app.get('/api/products', async (req, res) => {
     try {

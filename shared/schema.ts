@@ -32,6 +32,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  bannerImageUrl: varchar("banner_image_url"),
   username: varchar("username").unique(),
   bio: text("bio"),
   location: varchar("location"),
@@ -224,6 +225,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   profileImageUrl: true,
+  bannerImageUrl: true,
   username: true,
   bio: true,
   location: true,
@@ -235,7 +237,8 @@ export const updateProfileSchema = createInsertSchema(users).pick({
   lastName: true,
   bio: true,
   location: true,
-  website: true,
+  profileImageUrl: true,
+  bannerImageUrl: true,
 });
 
 export const insertVroomSchema = createInsertSchema(vrooms).pick({
