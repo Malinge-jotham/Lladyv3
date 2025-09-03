@@ -382,12 +382,12 @@ export default function Profile() {
             </CardContent>
           </Card>
 
-          {/* Tabs - Products and Vrooms */}
+          {/* Products and Vrooms Section */}
           <div className="space-y-6">
             {/* Products Section */}
             <Card data-testid="profile-products-section">
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                   <FaHeart className="text-accent" />
                   My Products ({profileStats.posts})
                 </h2>
@@ -417,7 +417,7 @@ export default function Profile() {
             {/* Vrooms Section */}
             <Card data-testid="profile-vrooms-section">
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                   <FaStore className="text-accent" />
                   My Vrooms ({profileStats.vrooms})
                 </h2>
