@@ -96,7 +96,7 @@ export default function PostProductModal({ isOpen, onClose }: PostProductModalPr
 
     createProductMutation.mutate({
       ...formData,
-      price: parseFloat(formData.price),
+      price: formData.price,
       imageUrls,
       hashtags: extractHashtags(formData.description),
     });

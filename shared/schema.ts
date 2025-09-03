@@ -248,13 +248,13 @@ export const insertVroomSchema = createInsertSchema(vrooms).pick({
   isPublic: true,
 });
 
-export const insertProductSchema = createInsertSchema(products).pick({
-  vroomId: true,
-  name: true,
-  description: true,
-  price: true,
-  imageUrls: true,
-  hashtags: true,
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  userId: true,
+  isAvailable: true,
+  views: true,
+  createdAt: true,
+  updatedAt: true,
 }).extend({
   price: z.union([z.string(), z.number()]).transform((val) => String(val)),
 });
