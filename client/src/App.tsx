@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
+import Explore from "@/pages/explore";
 import Vroom from "@/pages/vroom";
 import Messages from "@/pages/messages";
 import Trending from "@/pages/trending";
@@ -22,6 +23,7 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Home} />
+          <Route path="/explore" component={Explore} />
           <Route path="/vroom/:id?" component={Vroom} />
           <Route path="/messages" component={Messages} />
           <Route path="/trending" component={Trending} />

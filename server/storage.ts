@@ -202,6 +202,40 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
+  async searchUsers(query: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          like(users.firstName, `%${query}%`),
+          like(users.lastName, `%${query}%`),
+          like(users.email, `%${query}%`),
+          like(users.username, `%${query}%`),
+          like(users.bio, `%${query}%`)
+        )
+      )
+      .orderBy(desc(users.createdAt))
+      .limit(20);
+  }
+
+  async searchVrooms(query: string): Promise<Vroom[]> {
+    return await db
+      .select()
+      .from(vrooms)
+      .where(
+        and(
+          eq(vrooms.isPublic, true),
+          or(
+            like(vrooms.name, `%${query}%`),
+            like(vrooms.description, `%${query}%`)
+          )
+        )
+      )
+      .orderBy(desc(vrooms.createdAt))
+      .limit(20);
+  }
+
   async incrementProductViews(productId: string): Promise<void> {
     await db
       .update(products)
@@ -433,6 +467,7 @@ export class DatabaseStorage implements IStorage {
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
+        bannerImageUrl: users.bannerImageUrl,
         username: users.username,
         bio: users.bio,
         location: users.location,
@@ -453,6 +488,7 @@ export class DatabaseStorage implements IStorage {
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
+        bannerImageUrl: users.bannerImageUrl,
         username: users.username,
         bio: users.bio,
         location: users.location,

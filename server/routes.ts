@@ -184,6 +184,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/users/search', async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+      const users = await storage.searchUsers(query);
+      res.json(users);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+
+  app.get('/api/vrooms/search', async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ message: "Query parameter 'q' is required" });
+      }
+      const vrooms = await storage.searchVrooms(query);
+      res.json(vrooms);
+    } catch (error) {
+      console.error("Error searching vrooms:", error);
+      res.status(500).json({ message: "Failed to search vrooms" });
+    }
+  });
+
   app.get('/api/products/:id', async (req, res) => {
     try {
       const product = await storage.getProduct(req.params.id);
