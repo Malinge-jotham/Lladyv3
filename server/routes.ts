@@ -41,10 +41,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search users (for starting conversations)
-  app.get('/api/users/search/:query', isAuthenticated, async (req: any, res) => {
+  // Search users (for starting conversations) 
+  app.get('/api/users/search', isAuthenticated, async (req: any, res) => {
     try {
-      const query = req.params.query;
+      const query = req.query.q as string;
       const currentUserId = req.user.claims.sub;
       
       if (!query || query.length < 2) {
@@ -225,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!query) {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
-      const users = await storage.searchUsers(query);
+      const users = await storage.searchUsers(query, '');
       res.json(users);
     } catch (error) {
       console.error("Error searching users:", error);
