@@ -59,6 +59,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get unread messages count
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const unreadCount = await storage.getUnreadMessagesCount(userId);
+      res.json(unreadCount);
+    } catch (error) {
+      console.error("Error getting unread messages count:", error);
+      res.status(500).json({ message: "Failed to get unread count" });
+    }
+  });
+
   // Profile routes
   app.get('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
@@ -225,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!query) {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
-      const users = await storage.searchUsers(query);
+      const users = await storage.searchUsers(query, "");
       res.json(users);
     } catch (error) {
       console.error("Error searching users:", error);
@@ -728,19 +740,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws) => {
+    console.log('New WebSocket connection established');
+    
     ws.on('message', (data) => {
       try {
         const message = JSON.parse(data.toString());
         
-        // Broadcast message to all connected clients
-        wss.clients.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(message));
-          }
-        });
+        // Handle different message types
+        if (message.type === 'message') {
+          // Broadcast message to all connected clients
+          wss.clients.forEach((client) => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(message));
+            }
+          });
+        } else if (message.type === 'typing') {
+          // Broadcast typing indicator to all clients except sender
+          wss.clients.forEach((client) => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'typing',
+                userId: message.userId,
+                isTyping: message.isTyping,
+              }));
+            }
+          });
+        }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
       }
+    });
+
+    ws.on('close', () => {
+      console.log('WebSocket connection closed');
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
     });
   });
 

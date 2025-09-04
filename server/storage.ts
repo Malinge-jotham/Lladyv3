@@ -526,6 +526,15 @@ export class DatabaseStorage implements IStorage {
       .limit(10);
   }
 
+  async getUnreadMessagesCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)`.as('count') })
+      .from(messages)
+      .where(and(eq(messages.receiverId, userId), eq(messages.isRead, false)));
+    
+    return result[0]?.count || 0;
+  }
+
   // Follow operations
   async followUser(followerId: string, followingId: string): Promise<void> {
     await db.insert(follows).values({ followerId, followingId }).onConflictDoNothing();

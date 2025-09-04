@@ -141,6 +141,8 @@ export const messages = pgTable("messages", {
   orderId: varchar("order_id").references(() => orders.id, { onDelete: "set null" }),
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false),
+  isDelivered: boolean("is_delivered").default(false),
+  readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
