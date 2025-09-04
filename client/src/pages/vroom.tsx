@@ -1,65 +1,154 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/Sidebar";
 import ProductCard from "@/components/product/ProductCard";
+import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FaUser, FaStore, FaEye } from "react-icons/fa";
-import { useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { Badge } from "@/components/ui/badge";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FaUser, FaStore, FaEye, FaHeart, FaPlus, FaEllipsisV, FaEdit, FaTrash, FaShare } from "react-icons/fa";
+
+interface VroomData {
+  id: string;
+  name: string;
+  description?: string;
+  coverImageUrl?: string;
+  isPublic: boolean;
+  userId: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    profileImageUrl?: string;
+  };
+  products?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    imageUrls: string[];
+    userId: string;
+    createdAt: string;
+  }>;
+  stats?: {
+    followers: number;
+    views: number;
+    isFollowing: boolean;
+  };
+}
 
 export default function Vroom() {
   const { id } = useParams();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showAddProduct, setShowAddProduct] = useState(false);
 
   const {
     data: vroom,
     isLoading,
     error
-  } = useQuery({
+  } = useQuery<VroomData>({
     queryKey: ["/api/vrooms", id],
     enabled: !!id,
     retry: false,
   });
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+  // Follow/Unfollow mutation
+  const followMutation = useMutation({
+    mutationFn: async () => {
+      const method = vroom?.stats?.isFollowing ? "DELETE" : "POST";
+      return await apiRequest(method, `/api/vrooms/${id}/follow`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vrooms", id] });
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Success",
+        description: vroom?.stats?.isFollowing ? "Unfollowed vroom" : "Following vroom",
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update follow status",
         variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, authLoading, toast]);
+    },
+  });
 
-  useEffect(() => {
-    if (error && isUnauthorizedError(error as Error)) {
+  // Delete vroom mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", `/api/vrooms/${id}`);
+    },
+    onSuccess: () => {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Success",
+        description: "Vroom deleted successfully",
+      });
+      window.location.href = "/profile";
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete vroom",
         variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
+    },
+  });
+
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: vroom?.name,
+        text: vroom?.description,
+        url: window.location.href,
+      });
+    } catch {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Success",
+        description: "Link copied to clipboard!",
+      });
     }
-  }, [error, toast]);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm("Are you sure you want to delete this vroom? This action cannot be undone.")) {
+      deleteMutation.mutate();
+    }
+  };
 
   if (authLoading || isLoading) {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
         <div className="flex-1 ml-64 p-6">
-          <Skeleton className="h-32 w-full mb-6" />
+          <Skeleton className="h-40 w-full mb-6" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <Skeleton key={i} className="h-80 w-full" />
@@ -70,18 +159,37 @@ export default function Vroom() {
     );
   }
 
+  if (error && isUnauthorizedError(error as Error)) {
+    toast({
+      title: "Unauthorized",
+      description: "You are logged out. Logging in again...",
+      variant: "destructive",
+    });
+    setTimeout(() => {
+      window.location.href = "/api/login";
+    }, 500);
+    return null;
+  }
+
   if (!vroom) {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
         <div className="flex-1 ml-64 p-6">
           <div className="text-center py-12" data-testid="vroom-not-found">
-            <p className="text-muted-foreground">Vroom not found</p>
+            <FaStore className="mx-auto text-6xl text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Vroom not found</h2>
+            <p className="text-muted-foreground">This vroom doesn't exist or has been removed.</p>
           </div>
         </div>
       </div>
     );
   }
+
+  const isOwner = user && vroom.userId === user.id;
+  const canEdit = isOwner;
+  const productCount = vroom.products?.length || 0;
+  const followerCount = vroom.stats?.followers || 0;
 
   return (
     <div className="flex min-h-screen">
@@ -92,60 +200,182 @@ export default function Vroom() {
           {/* Vroom Header */}
           <Card className="mb-6" data-testid="vroom-header">
             <CardContent className="p-6">
-              <div className="flex items-start space-x-4">
-                {vroom?.coverImageUrl ? (
+              {/* Cover Image */}
+              {vroom.coverImageUrl && (
+                <div className="w-full h-48 mb-6 rounded-xl overflow-hidden">
                   <img
                     src={vroom.coverImageUrl}
-                    alt={vroom?.name || 'Vroom'}
-                    className="w-20 h-20 rounded-xl object-cover"
+                    alt={vroom.name}
+                    className="w-full h-full object-cover"
                     data-testid="vroom-cover-image"
                   />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
-                    <FaStore className="text-2xl text-muted-foreground" />
+                </div>
+              )}
+
+              <div className="flex items-start space-x-4">
+                {/* Vroom Icon */}
+                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
+                  <FaStore className="text-2xl text-primary" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <h1 className="text-3xl font-bold" data-testid="vroom-name">
+                      {vroom.name}
+                    </h1>
+                    
+                    <div className="flex items-center gap-2">
+                      <Badge variant={vroom.isPublic ? "default" : "secondary"}>
+                        {vroom.isPublic ? "Public" : "Private"}
+                      </Badge>
+                      
+                      {canEdit && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" data-testid="button-vroom-menu">
+                              <FaEllipsisV />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem data-testid="menu-edit-vroom">
+                              <FaEdit className="mr-2" />
+                              Edit Vroom
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={handleDelete}
+                              className="text-destructive"
+                              data-testid="menu-delete-vroom"
+                            >
+                              <FaTrash className="mr-2" />
+                              Delete Vroom
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold mb-2" data-testid="vroom-name">
-                    {vroom?.name || 'Unnamed Vroom'}
-                  </h1>
-                  <p className="text-muted-foreground mb-3" data-testid="vroom-description">
-                    {vroom?.description || 'No description'}
-                  </p>
-                  <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+
+                  {vroom.description && (
+                    <p className="text-muted-foreground mb-4" data-testid="vroom-description">
+                      {vroom.description}
+                    </p>
+                  )}
+
+                  {/* Owner Info */}
+                  {vroom.user && (
+                    <div className="flex items-center gap-2 mb-4">
+                      {vroom.user.profileImageUrl ? (
+                        <img
+                          src={vroom.user.profileImageUrl}
+                          alt="Owner"
+                          className="w-8 h-8 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <FaUser className="text-xs" />
+                        </div>
+                      )}
+                      <span className="font-medium">
+                        {vroom.user.firstName} {vroom.user.lastName}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Stats */}
+                  <div className="flex items-center space-x-6 text-sm text-muted-foreground mb-4">
                     <span data-testid="vroom-product-count">
-                      {vroom?.products && Array.isArray(vroom.products) ? vroom.products.length : 0} products
+                      <strong>{productCount}</strong> products
                     </span>
                     <span data-testid="vroom-followers">
-                      1.2K followers
-                    </span>
-                    <span data-testid="vroom-views">
-                      45.8K views
+                      <strong>{followerCount}</strong> followers
                     </span>
                   </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3">
+                    {!isOwner && isAuthenticated && (
+                      <Button 
+                        onClick={() => followMutation.mutate()}
+                        disabled={followMutation.isPending}
+                        variant={vroom.stats?.isFollowing ? "outline" : "default"}
+                        data-testid="button-follow-vroom"
+                      >
+                        <FaHeart className={`mr-2 ${vroom.stats?.isFollowing ? 'text-red-500' : ''}`} />
+                        {vroom.stats?.isFollowing ? "Following" : "Follow"}
+                      </Button>
+                    )}
+
+                    {isOwner && (
+                      <Button 
+                        onClick={() => setShowAddProduct(true)}
+                        data-testid="button-add-product-to-vroom"
+                      >
+                        <FaPlus className="mr-2" />
+                        Add Product
+                      </Button>
+                    )}
+
+                    <Button 
+                      variant="outline" 
+                      onClick={handleShare}
+                      data-testid="button-share-vroom"
+                    >
+                      <FaShare className="mr-2" />
+                      Share
+                    </Button>
+                  </div>
                 </div>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-follow-vroom">
-                  <FaUser className="mr-2" />
-                  Follow
-                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Product Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="vroom-products-grid">
-            {vroom?.products && Array.isArray(vroom.products) && vroom.products.length > 0 ? (
-              vroom.products.map((product: any) => (
-                <ProductCard key={product.id} product={product} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12 text-muted-foreground" data-testid="empty-vroom-products">
-                <p>No products in this vroom yet.</p>
+          {/* Products Section */}
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">Products ({productCount})</h2>
+            
+            {vroom.products && vroom.products.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="vroom-products-grid">
+                {vroom.products.map((product) => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product}
+                    showAddToVroom={false}
+                  />
+                ))}
               </div>
+            ) : (
+              <Card>
+                <CardContent className="p-12 text-center" data-testid="empty-vroom-products">
+                  <FaStore className="mx-auto text-6xl text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No products yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {isOwner 
+                      ? "Start building your collection by adding products to this vroom."
+                      : "This vroom doesn't have any products yet."
+                    }
+                  </p>
+                  {isOwner && (
+                    <Button onClick={() => setShowAddProduct(true)}>
+                      <FaPlus className="mr-2" />
+                      Add Your First Product
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
       </div>
+
+      {/* Add Product Modal - Only show a placeholder product for demo */}
+      {showAddProduct && (
+        <AddProductToVroomModal
+          isOpen={showAddProduct}
+          onClose={() => setShowAddProduct(false)}
+          productId="demo-product"
+          productName="Demo Product"
+        />
+      )}
     </div>
   );
 }

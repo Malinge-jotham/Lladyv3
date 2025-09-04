@@ -168,13 +168,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
-  async getProductsByVroom(vroomId: string): Promise<Product[]> {
-    return await db
-      .select()
-      .from(products)
-      .where(and(eq(products.vroomId, vroomId), eq(products.isAvailable, true)))
-      .orderBy(desc(products.createdAt));
-  }
 
   async getTrendingProducts(): Promise<Product[]> {
     return await db
@@ -344,6 +337,87 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(vroomFollows)
       .where(and(eq(vroomFollows.userId, userId), eq(vroomFollows.vroomId, vroomId)));
+  }
+
+  async deleteVroom(id: string, userId: string): Promise<void> {
+    // First remove vroom reference from products
+    await db
+      .update(products)
+      .set({ vroomId: null })
+      .where(eq(products.vroomId, id));
+    
+    // Then delete the vroom (only if user owns it)
+    await db
+      .delete(vrooms)
+      .where(and(eq(vrooms.id, id), eq(vrooms.userId, userId)));
+  }
+
+  async addProductToVroom(productId: string, vroomId: string, userId: string): Promise<void> {
+    // Verify the user owns the vroom
+    const vroom = await this.getVroom(vroomId);
+    if (!vroom || vroom.userId !== userId) {
+      throw new Error("Vroom not found or access denied");
+    }
+    
+    // Update the product's vroom
+    await db
+      .update(products)
+      .set({ vroomId })
+      .where(eq(products.id, productId));
+  }
+
+  async removeProductFromVroom(productId: string, vroomId: string, userId: string): Promise<void> {
+    // Verify the user owns the vroom
+    const vroom = await this.getVroom(vroomId);
+    if (!vroom || vroom.userId !== userId) {
+      throw new Error("Vroom not found or access denied");
+    }
+    
+    // Remove the product from the vroom
+    await db
+      .update(products)
+      .set({ vroomId: null })
+      .where(and(eq(products.id, productId), eq(products.vroomId, vroomId)));
+  }
+
+  async getProductsByVroom(vroomId: string): Promise<Product[]> {
+    return await db
+      .select()
+      .from(products)
+      .where(eq(products.vroomId, vroomId))
+      .orderBy(desc(products.createdAt));
+  }
+
+  async getVroomsByProduct(productId: string): Promise<Vroom[]> {
+    const product = await this.getProduct(productId);
+    if (!product || !product.vroomId) {
+      return [];
+    }
+    
+    const vroom = await this.getVroom(product.vroomId);
+    return vroom ? [vroom] : [];
+  }
+
+  async getVroomStats(vroomId: string, userId?: string): Promise<{ followers: number; views: number; isFollowing: boolean }> {
+    const [followersResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(vroomFollows)
+      .where(eq(vroomFollows.vroomId, vroomId));
+
+    let isFollowing = false;
+    if (userId) {
+      const [followResult] = await db
+        .select()
+        .from(vroomFollows)
+        .where(and(eq(vroomFollows.vroomId, vroomId), eq(vroomFollows.userId, userId)));
+      isFollowing = !!followResult;
+    }
+
+    return {
+      followers: Number(followersResult.count),
+      views: 0, // TODO: Implement view tracking
+      isFollowing,
+    };
   }
 
   // Cart operations

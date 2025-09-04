@@ -325,7 +325,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const products = await storage.getProductsByVroom(vroom.id);
       const user = await storage.getUser(vroom.userId);
-      res.json({ ...vroom, products, user });
+      const userId = (req as any).user?.claims?.sub;
+      const stats = await storage.getVroomStats(vroom.id, userId);
+      res.json({ ...vroom, products, user, stats });
     } catch (error) {
       console.error("Error fetching vroom:", error);
       res.status(500).json({ message: "Failed to fetch vroom" });
@@ -367,6 +369,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error unfollowing vroom:", error);
       res.status(500).json({ message: "Failed to unfollow vroom" });
+    }
+  });
+
+  // Get user's vrooms
+  app.get('/api/vrooms/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vrooms = await storage.getVroomsByUser(userId);
+      res.json(vrooms);
+    } catch (error) {
+      console.error("Error fetching user vrooms:", error);
+      res.status(500).json({ message: "Failed to fetch user vrooms" });
+    }
+  });
+
+  // Delete vroom
+  app.delete('/api/vrooms/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteVroom(req.params.id, userId);
+      res.status(200).json({ message: "Vroom deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting vroom:", error);
+      res.status(500).json({ message: "Failed to delete vroom" });
+    }
+  });
+
+  // Add product to vroom
+  app.post('/api/vrooms/:id/products', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { productId } = req.body;
+      
+      if (!productId) {
+        return res.status(400).json({ message: "Product ID is required" });
+      }
+      
+      await storage.addProductToVroom(productId, req.params.id, userId);
+      res.status(200).json({ message: "Product added to vroom" });
+    } catch (error) {
+      console.error("Error adding product to vroom:", error);
+      res.status(500).json({ message: "Failed to add product to vroom" });
+    }
+  });
+
+  // Remove product from vroom
+  app.delete('/api/vrooms/:id/products/:productId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.removeProductFromVroom(req.params.productId, req.params.id, userId);
+      res.status(200).json({ message: "Product removed from vroom" });
+    } catch (error) {
+      console.error("Error removing product from vroom:", error);
+      res.status(500).json({ message: "Failed to remove product from vroom" });
+    }
+  });
+
+  // Get vrooms for a product
+  app.get('/api/products/:id/vrooms', async (req, res) => {
+    try {
+      const vrooms = await storage.getVroomsByProduct(req.params.id);
+      res.json(vrooms);
+    } catch (error) {
+      console.error("Error fetching product vrooms:", error);
+      res.status(500).json({ message: "Failed to fetch product vrooms" });
+    }
+  });
+
+  // Vroom image upload endpoint
+  app.put('/api/vroom-images', isAuthenticated, async (req: any, res) => {
+    if (!req.body.imageURL) {
+      return res.status(400).json({ error: "imageURL is required" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageURL,
+        {
+          owner: req.user.claims.sub,
+          visibility: "public",
+        },
+      );
+
+      res.status(200).json({
+        objectPath: objectPath,
+      });
+    } catch (error) {
+      console.error("Error processing vroom image:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
