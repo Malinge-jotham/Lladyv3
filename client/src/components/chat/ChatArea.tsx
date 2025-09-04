@@ -26,7 +26,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
   });
 
   const { data: otherUser } = useQuery({
-    queryKey: ["/api/auth/user", userId],
+    queryKey: ["/api/users", userId],
     retry: false,
   });
 
@@ -72,8 +72,11 @@ export default function ChatArea({ userId }: ChatAreaProps) {
       try {
         const data = JSON.parse(event.data);
         if (data.type === "message") {
-          // Refresh messages when receiving new ones
-          queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
+          // Only refresh if the message is relevant to current conversation
+          if (data.message.senderId === userId || data.message.receiverId === userId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
+          }
+          // Always refresh conversations list for new message notifications
           queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
         }
       } catch (error) {
@@ -97,7 +100,9 @@ export default function ChatArea({ userId }: ChatAreaProps) {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    scrollToBottom();
+    if (messages && Array.isArray(messages) && messages.length > 0) {
+      scrollToBottom();
+    }
   }, [messages]);
 
   const scrollToBottom = () => {

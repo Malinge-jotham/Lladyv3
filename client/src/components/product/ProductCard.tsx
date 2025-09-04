@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
+import MessageSellerButton from "@/components/product/MessageSellerButton";
 import { FaHeart, FaShoppingCart, FaBolt, FaStore } from "react-icons/fa";
 
 interface ProductCardProps {
@@ -14,7 +15,9 @@ interface ProductCardProps {
     price: string | number;
     imageUrls?: string[];
     likes?: number;
+    userId?: string;
     user?: {
+      id?: string;
       firstName?: string;
       lastName?: string;
     };
@@ -121,6 +124,17 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
               Buy Now
             </Button>
           </div>
+
+          {/* Message Seller Button */}
+          {isAuthenticated && (product.userId || product.user?.id) && (
+            <div className="mt-2">
+              <MessageSellerButton
+                sellerId={product.userId || product.user?.id || ''}
+                sellerName={product.user ? `${product.user.firstName} ${product.user.lastName}` : undefined}
+                productName={product.name}
+              />
+            </div>
+          )}
 
           {/* Add to Vroom button (bottom action) */}
           {showAddToVroom && isAuthenticated && (

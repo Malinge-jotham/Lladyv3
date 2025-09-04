@@ -24,7 +24,7 @@ import {
   type CartItem,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, like, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -195,22 +195,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
-  async searchUsers(query: string): Promise<User[]> {
-    return await db
-      .select()
-      .from(users)
-      .where(
-        or(
-          like(users.firstName, `%${query}%`),
-          like(users.lastName, `%${query}%`),
-          like(users.email, `%${query}%`),
-          like(users.username, `%${query}%`),
-          like(users.bio, `%${query}%`)
-        )
-      )
-      .orderBy(desc(users.createdAt))
-      .limit(20);
-  }
 
   async searchVrooms(query: string): Promise<Vroom[]> {
     return await db
@@ -520,6 +504,26 @@ export class DatabaseStorage implements IStorage {
       .update(messages)
       .set({ isRead: true })
       .where(and(eq(messages.receiverId, userId), eq(messages.senderId, senderId)));
+  }
+
+  async searchUsers(query: string, excludeUserId: string): Promise<User[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+    
+    return await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          not(eq(users.id, excludeUserId)),
+          or(
+            ilike(users.firstName, searchTerm),
+            ilike(users.lastName, searchTerm),
+            ilike(users.email, searchTerm),
+            ilike(users.username, searchTerm)
+          )
+        )
+      )
+      .limit(10);
   }
 
   // Follow operations

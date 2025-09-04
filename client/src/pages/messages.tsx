@@ -3,16 +3,20 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
 import ChatArea from "@/components/chat/ChatArea";
+import StartConversationModal from "@/components/messages/StartConversationModal";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { FaPlus } from "react-icons/fa";
 
 export default function Messages() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [showStartConversation, setShowStartConversation] = useState(false);
 
   const {
     data: conversations,
@@ -68,7 +72,16 @@ export default function Messages() {
           {/* Conversations List */}
           <div className="w-80 border-r border-border bg-card" data-testid="conversations-list">
             <div className="p-4 border-b border-border">
-              <h2 className="text-xl font-semibold">Messages</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Messages</h2>
+                <Button
+                  size="sm"
+                  onClick={() => setShowStartConversation(true)}
+                  data-testid="button-start-conversation"
+                >
+                  <FaPlus />
+                </Button>
+              </div>
             </div>
             <div className="divide-y divide-border">
               {isLoading ? (
@@ -144,6 +157,15 @@ export default function Messages() {
           )}
         </div>
       </div>
+
+      {/* Start Conversation Modal */}
+      <StartConversationModal
+        isOpen={showStartConversation}
+        onClose={() => setShowStartConversation(false)}
+        onConversationStarted={(userId) => {
+          setSelectedUserId(userId);
+        }}
+      />
     </div>
   );
 }
