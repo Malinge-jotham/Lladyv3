@@ -5,10 +5,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/Sidebar";
 import RightSidebar from "@/components/layout/RightSidebar";
 import ProductCard from "@/components/product/ProductCard";
+import VroomCard from "@/components/vroom/VroomCard";
+import CreateVroomModal from "@/components/vroom/CreateVroomModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaUsers, FaHeart, FaCamera } from "react-icons/fa";
+import { FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaUsers, FaHeart, FaCamera, FaPlus } from "react-icons/fa";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
@@ -90,10 +93,11 @@ export default function Profile() {
 
   // Image upload functions
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest('POST', '/api/objects/upload') as { uploadURL: string };
+    const response = await apiRequest('POST', '/api/objects/upload');
+    const data = await response.json() as { uploadURL: string };
     return {
       method: 'PUT' as const,
-      url: response.uploadURL,
+      url: data.uploadURL,
     };
   };
 
@@ -422,39 +426,54 @@ export default function Profile() {
                   My Vrooms ({profileStats.vrooms})
                 </h2>
                 
+                <div className="flex items-center justify-between mb-4">
+                  <div />
+                  <CreateVroomModal
+                    trigger={
+                      <Button size="sm" data-testid="button-create-vroom-profile">
+                        <FaPlus className="mr-2" />
+                        Create Vroom
+                      </Button>
+                    }
+                  />
+                </div>
+                
                 {vroomsLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-40 w-full" />
+                      <Skeleton key={i} className="h-48 w-full" />
                     ))}
                   </div>
                 ) : userVrooms && Array.isArray(userVrooms) && userVrooms.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="user-vrooms-grid">
                     {userVrooms.map((vroom: any) => (
-                      <Card key={vroom.id} className="hover:shadow-lg transition-shadow cursor-pointer" data-testid={`vroom-card-${vroom.id}`}>
-                        <CardContent className="p-6">
-                          <div className="flex items-start space-x-4">
-                            <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center">
-                              <FaStore className="text-accent" />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-lg">{vroom.name}</h3>
-                              <p className="text-muted-foreground text-sm">{vroom.description}</p>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                                <span>{vroom.products?.length || 0} products</span>
-                                <Badge variant="secondary">Active</Badge>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <VroomCard 
+                        key={vroom.id} 
+                        vroom={{
+                          ...vroom,
+                          user: profileData?.user,
+                          stats: {
+                            products: 0, // TODO: Get actual product count
+                            followers: 0, // TODO: Get actual followers
+                            views: 0, // TODO: Get actual views
+                          }
+                        }} 
+                      />
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground" data-testid="empty-user-vrooms">
                     <FaStore className="mx-auto text-4xl mb-4 opacity-50" />
-                    <p>You haven't created any vrooms yet.</p>
-                    <p className="text-sm">Create your first vroom to organize your products!</p>
+                    <h3 className="text-lg font-medium mb-2">No vrooms yet</h3>
+                    <p className="mb-4">Create your first vroom to organize your products!</p>
+                    <CreateVroomModal
+                      trigger={
+                        <Button data-testid="button-create-first-vroom">
+                          <FaPlus className="mr-2" />
+                          Create Your First Vroom
+                        </Button>
+                      }
+                    />
                   </div>
                 )}
               </CardContent>

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
 import ShoppingCart from "@/components/cart/ShoppingCart";
 import PostProductModal from "@/components/product/PostProductModal";
+import CreateVroomModal from "@/components/vroom/CreateVroomModal";
 import { FaHome, FaCompass, FaFire, FaStore, FaComments, FaUser, FaShoppingCart, FaPlus, FaShoppingBag } from "react-icons/fa";
 
 const navigationItems = [
@@ -20,6 +21,7 @@ export default function Sidebar() {
   const [location] = useLocation();
   const [showCart, setShowCart] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showCreateVroom, setShowCreateVroom] = useState(false);
   const { cartItemCount } = useCart();
 
   const handleLogout = () => {
@@ -78,15 +80,27 @@ export default function Sidebar() {
             )}
           </Button>
 
-          {/* Post Product Button */}
-          <Button
-            onClick={() => setShowPostModal(true)}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            data-testid="button-post-product"
-          >
-            <FaPlus className="mr-2" />
-            Post Product
-          </Button>
+          {/* Action Buttons */}
+          <div className="space-y-2">
+            <Button
+              onClick={() => setShowPostModal(true)}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              data-testid="button-post-product"
+            >
+              <FaPlus className="mr-2" />
+              Post Product
+            </Button>
+            
+            <Button
+              onClick={() => setShowCreateVroom(true)}
+              variant="outline"
+              className="w-full"
+              data-testid="button-create-vroom"
+            >
+              <FaStore className="mr-2" />
+              Create Vroom
+            </Button>
+          </div>
 
           {/* Logout Button */}
           <Button
@@ -105,6 +119,9 @@ export default function Sidebar() {
 
       {/* Post Product Modal */}
       <PostProductModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
+      
+      {/* Create Vroom Modal */}
+      <CreateVroomModal isOpen={showCreateVroom} onClose={() => setShowCreateVroom(false)} />
     </>
   );
 }
