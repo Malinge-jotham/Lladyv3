@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
-import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import ShoppingCart from "@/components/cart/ShoppingCart";
 import PostProductModal from "@/components/product/PostProductModal";
 import CreateVroomModal from "@/components/vroom/CreateVroomModal";
@@ -24,7 +23,6 @@ export default function Sidebar() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [showCreateVroom, setShowCreateVroom] = useState(false);
   const { cartItemCount } = useCart();
-  const { unreadCount } = useUnreadMessages();
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -52,26 +50,15 @@ export default function Sidebar() {
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                    className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted"
                     }`}
                     data-testid={item.testId}
                   >
-                    <div className="flex items-center space-x-3">
-                      <Icon className="w-5 h-5" />
-                      <span className="font-medium">{item.label}</span>
-                    </div>
-                    {item.path === "/messages" && unreadCount > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center"
-                        data-testid="unread-messages-badge"
-                      >
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Badge>
-                    )}
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
                   </div>
                 </Link>
               );
