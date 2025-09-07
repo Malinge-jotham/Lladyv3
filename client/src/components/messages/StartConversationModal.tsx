@@ -23,7 +23,7 @@ export default function StartConversationModal({
   const { toast } = useToast();
 
   const { data: searchResults, isLoading } = useQuery({
-    queryKey: ["/api/users/search", { q: searchQuery }],
+    queryKey: ["/api/users/search", searchQuery],
     enabled: searchQuery.length >= 2 && isOpen,
     retry: false,
   });
