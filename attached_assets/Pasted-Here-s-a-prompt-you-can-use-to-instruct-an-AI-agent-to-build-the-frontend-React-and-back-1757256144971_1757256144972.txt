@@ -1,0 +1,72 @@
+Here’s a **prompt you can use to instruct an AI agent** to build the **frontend (React)** and **backend (Node.js + WebSocket/Socket.io + PostgreSQL/MongoDB)** for a **real-time messaging functionality** similar to the UI in the screenshot, but with a lighter background (instead of black).
+
+---
+
+### Prompt for AI Agent
+
+**Instruction:**
+Build a **real-time messaging application** with the following requirements:
+
+---
+
+#### **Frontend (React + TailwindCSS + Socket.io client):**
+
+1. **UI Design**
+
+   * Use the layout shown in the uploaded picture as reference (chat list screen on the left, chat window on the right).
+   * Replace the black background with a **light background** (white or light gray), keeping a modern, minimal, and rounded card style.
+   * Include:
+
+     * A **search bar** at the top of the chat list.
+     * A list of **chat contacts** with: profile image, name, last message snippet, unread badge, and timestamp.
+     * A **chat window** that shows conversation history with alternating message bubbles.
+     * A **message input bar** with text field, emoji button, attachment option, and send button.
+
+2. **Functionality**
+
+   * Display real-time incoming and outgoing messages without page reloads.
+   * Highlight active conversations.
+   * Show typing indicators when the other user is typing.
+   * Scroll chat automatically to the latest message.
+
+---
+
+#### **Backend (Node.js + Express + Socket.io + Database):**
+
+1. **Authentication**
+
+   * Implement simple user authentication (JWT-based).
+
+2. **Messaging API**
+
+   * Endpoints for:
+
+     * `POST /messages` → Send a message.
+     * `GET /messages/:conversationId` → Fetch messages for a conversation.
+     * `GET /conversations` → Fetch user conversations.
+
+3. **Real-time Communication**
+
+   * Use **Socket.io** for:
+
+     * Live message delivery.
+     * "User is typing" indicators.
+     * Message read receipts.
+
+4. **Database Schema**
+
+   * Users: `{ id, name, email, password, profilePic }`
+   * Conversations: `{ id, participantIds[] }`
+   * Messages: `{ id, conversationId, senderId, text, createdAt, readBy[] }`
+
+---
+
+#### **Extra Requirements**
+
+* Code should be modular and clean.
+* Frontend and backend must integrate seamlessly for real-time messaging.
+* Include instructions on how to run both frontend and backend locally.
+
+---
+
+👉 Would you like me to now **write the actual code** (frontend + backend boilerplate with real-time chat working), so you can copy-paste and run it?

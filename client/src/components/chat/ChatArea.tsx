@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { FaPaperPlane } from "react-icons/fa";
+import { FaPaperPlane, FaSmile, FaPaperclip, FaArrowLeft, FaPhone, FaVideo } from "react-icons/fa";
 
 interface ChatAreaProps {
   userId: string;
@@ -15,6 +15,8 @@ interface ChatAreaProps {
 export default function ChatArea({ userId }: ChatAreaProps) {
   const [messageText, setMessageText] = useState("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -109,6 +111,40 @@ export default function ChatArea({ userId }: ChatAreaProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Handle typing indicator
+  const handleTyping = () => {
+    if (!isTyping) {
+      setIsTyping(true);
+      // Send typing indicator to other user via WebSocket
+      if (socket) {
+        socket.send(JSON.stringify({
+          type: "typing",
+          userId: (currentUser as any)?.id,
+          targetUserId: userId,
+          isTyping: true
+        }));
+      }
+    }
+    
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      setIsTyping(false);
+      if (socket) {
+        socket.send(JSON.stringify({
+          type: "typing",
+          userId: (currentUser as any)?.id,
+          targetUserId: userId,
+          isTyping: false
+        }));
+      }
+    }, 1000);
+    
+    setTypingTimeout(timeout);
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -129,14 +165,16 @@ export default function ChatArea({ userId }: ChatAreaProps) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col">
-        <div className="p-4 border-b border-border">
+      <div className="flex-1 flex flex-col bg-white">
+        <div className="p-4 border-b border-gray-200">
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="flex-1 p-4 space-y-4">
+        <div className="flex-1 p-4 space-y-3 bg-gray-50">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-              <Skeleton className="h-12 w-48 rounded-lg" />
+            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+              <Skeleton className={`h-12 w-48 rounded-2xl ${
+                i % 2 === 0 ? 'bg-red-200' : 'bg-gray-200'
+              }`} />
             </div>
           ))}
         </div>
@@ -145,37 +183,74 @@ export default function ChatArea({ userId }: ChatAreaProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col" data-testid="chat-area">
+    <div className="flex-1 flex flex-col bg-white" data-testid="chat-area">
       {/* Chat Header */}
-      <div className="p-4 border-b border-border bg-card" data-testid="chat-header">
-        <div className="flex items-center space-x-3">
-          {(otherUser as any)?.profileImageUrl ? (
-            <img
-              src={(otherUser as any).profileImageUrl}
-              alt="User avatar"
-              className="w-10 h-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-              <span className="text-muted-foreground text-sm">
-                {(otherUser as any)?.firstName?.[0] || '?'}
-              </span>
+      <div className="p-4 border-b border-gray-200 bg-white shadow-sm" data-testid="chat-header">
+        {(otherUser as any) ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 lg:hidden"
+                onClick={() => window.history.back()}
+              >
+                <FaArrowLeft className="w-4 h-4" />
+              </Button>
+              
+              <div className="relative">
+                {(otherUser as any).profileImageUrl ? (
+                  <img
+                    src={(otherUser as any).profileImageUrl}
+                    alt="User avatar"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                    <span className="text-white font-semibold">
+                      {(otherUser as any)?.firstName?.[0] || '?'}
+                    </span>
+                  </div>
+                )}
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-gray-900" data-testid="chat-user-name">
+                  {(otherUser as any)?.firstName} {(otherUser as any)?.lastName}
+                </h3>
+                <p className="text-sm text-green-500 font-medium">Online</p>
+              </div>
             </div>
-          )}
-          <div>
-            <p className="font-medium" data-testid="chat-user-name">
-              {(otherUser as any)?.firstName} {(otherUser as any)?.lastName}
-            </p>
-            <p className="text-sm text-muted-foreground">Online</p>
+            
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="sm" className="p-2">
+                <FaPhone className="w-4 h-4 text-gray-600" />
+              </Button>
+              <Button variant="ghost" size="sm" className="p-2">
+                <FaVideo className="w-4 h-4 text-gray-600" />
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="animate-pulse flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+            <div className="space-y-1">
+              <div className="h-4 w-24 bg-gray-200 rounded"></div>
+              <div className="h-3 w-16 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50" data-testid="chat-messages">
         {messages && Array.isArray(messages) && messages.length > 0 ? (
-          messages.map((message: any) => {
+          messages.map((message: any, index: number) => {
             const isOwnMessage = message.senderId === (currentUser as any)?.id;
+            const isLastInGroup = index === messages.length - 1 || 
+              messages[index + 1]?.senderId !== message.senderId;
+            
             return (
               <div
                 key={message.id}
@@ -183,55 +258,84 @@ export default function ChatArea({ userId }: ChatAreaProps) {
                 data-testid={`message-${message.id}`}
               >
                 <div
-                  className={`max-w-xs p-3 rounded-lg ${
+                  className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
                     isOwnMessage
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
+                      ? 'bg-red-500 text-white rounded-br-md'
+                      : 'bg-white text-gray-900 rounded-bl-md border border-gray-200'
+                  } ${isLastInGroup ? 'mb-2' : 'mb-1'}`}
                 >
-                  <p className="text-sm" data-testid={`message-content-${message.id}`}>
+                  <p className="text-sm leading-relaxed" data-testid={`message-content-${message.id}`}>
                     {message.content}
                   </p>
-                  <span
-                    className={`text-xs ${
-                      isOwnMessage
-                        ? 'text-primary-foreground/80'
-                        : 'text-muted-foreground'
-                    }`}
-                    data-testid={`message-time-${message.id}`}
-                  >
+                  <p className={`text-xs mt-1 ${
+                    isOwnMessage ? 'text-red-100' : 'text-gray-500'
+                  }`} data-testid={`message-time-${message.id}`}>
                     {formatTime(message.createdAt)}
-                  </span>
+                  </p>
                 </div>
               </div>
             );
           })
         ) : (
-          <div className="text-center py-12 text-muted-foreground" data-testid="empty-chat">
-            <p>No messages yet. Start the conversation!</p>
+          <div className="text-center text-gray-500 py-8" data-testid="empty-chat">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaPaperPlane className="w-6 h-6 text-gray-400" />
+            </div>
+            <p className="font-medium">No messages yet</p>
+            <p className="text-sm mt-1">Start the conversation!</p>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-border" data-testid="message-input-area">
-        <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-          <Input
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 rounded-full"
-            disabled={sendMessageMutation.isPending}
-            data-testid="input-message"
-          />
+      <div className="p-4 border-t border-gray-200 bg-white" data-testid="message-input-area">
+        <form onSubmit={handleSendMessage} className="flex items-end space-x-3">
+          {/* Attachment Button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+            data-testid="button-attachment"
+          >
+            <FaPaperclip className="w-5 h-5" />
+          </Button>
+          
+          {/* Message Input Field */}
+          <div className="flex-1 relative">
+            <Input
+              value={messageText}
+              onChange={(e) => {
+                setMessageText(e.target.value);
+                handleTyping();
+              }}
+              placeholder="Type a message"
+              className="pr-12 py-3 rounded-full border-gray-300 focus:border-red-500 focus:ring-red-500 bg-gray-100 focus:bg-white"
+              disabled={sendMessageMutation.isPending}
+              data-testid="input-message"
+            />
+            
+            {/* Emoji Button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 rounded-full"
+              data-testid="button-emoji"
+            >
+              <FaSmile className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          {/* Send Button */}
           <Button
             type="submit"
             disabled={sendMessageMutation.isPending || !messageText.trim()}
-            className="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/90"
+            className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
             data-testid="button-send-message"
           >
-            <FaPaperPlane />
+            <FaPaperPlane className="w-5 h-5" />
           </Button>
         </form>
       </div>

@@ -82,6 +82,10 @@ export interface IStorage {
   unfollowUser(followerId: string, followingId: string): Promise<void>;
   getFollowers(userId: string): Promise<User[]>;
   getFollowing(userId: string): Promise<User[]>;
+  
+  // Search operations
+  searchUsers(query: string, excludeUserId: string): Promise<User[]>;
+  searchVrooms(query: string): Promise<Vroom[]>;
 }
 
 export class DatabaseStorage implements IStorage {
