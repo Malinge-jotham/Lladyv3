@@ -268,6 +268,8 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   quantity: true,
   totalAmount: true,
   shippingAddress: true,
+}).extend({
+  totalAmount: z.union([z.string(), z.number()]).transform((val) => String(val)),
 });
 
 export const insertMessageSchema = createInsertSchema(messages).pick({
