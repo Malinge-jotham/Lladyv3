@@ -316,9 +316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const comment = await storage.commentOnProduct(
         userId, 
-        validatedData.productId, 
+        req.params.id, 
         validatedData.content,
-        validatedData.parentCommentId
+        validatedData.parentCommentId || undefined
       );
       
       // Get the comment with user data
