@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/Sidebar";
 import ProductCard from "@/components/product/ProductCard";
-import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
+import SelectProductForVroomModal from "@/components/vroom/SelectProductForVroomModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -367,13 +367,12 @@ export default function Vroom() {
         </div>
       </div>
 
-      {/* Add Product Modal - Only show a placeholder product for demo */}
+      {/* Add Product to Vroom Modal */}
       {showAddProduct && (
-        <AddProductToVroomModal
+        <SelectProductForVroomModal
           isOpen={showAddProduct}
           onClose={() => setShowAddProduct(false)}
-          productId="demo-product"
-          productName="Demo Product"
+          vroomId={id || ""}
         />
       )}
     </div>
