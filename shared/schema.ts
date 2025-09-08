@@ -9,6 +9,7 @@ import {
   decimal,
   integer,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -101,7 +102,9 @@ export const cartItems = pgTable("cart_items", {
   productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   quantity: integer("quantity").default(1),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  uniqueUserProduct: unique().on(table.userId, table.productId),
+}));
 
 // Orders
 export const orders = pgTable("orders", {
