@@ -22,6 +22,8 @@ import {
   type Message,
   type InsertMessage,
   type CartItem,
+  type InsertProductComment,
+  type ProductComment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
@@ -46,7 +48,8 @@ export interface IStorage {
   // Product interactions
   likeProduct(userId: string, productId: string): Promise<void>;
   unlikeProduct(userId: string, productId: string): Promise<void>;
-  commentOnProduct(userId: string, productId: string, content: string): Promise<void>;
+  commentOnProduct(userId: string, productId: string, content: string, parentCommentId?: string): Promise<ProductComment>;
+  getProductComments(productId: string): Promise<(ProductComment & { user: User; replies: (ProductComment & { user: User })[] })[]>;
   shareProduct(userId: string, productId: string): Promise<void>;
   getProductStats(productId: string): Promise<{ likes: number; comments: number; shares: number }>;
   
@@ -235,8 +238,58 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(productLikes.userId, userId), eq(productLikes.productId, productId)));
   }
 
-  async commentOnProduct(userId: string, productId: string, content: string): Promise<void> {
-    await db.insert(productComments).values({ userId, productId, content });
+  async commentOnProduct(userId: string, productId: string, content: string, parentCommentId?: string): Promise<ProductComment> {
+    const [comment] = await db.insert(productComments).values({ 
+      userId, 
+      productId, 
+      content, 
+      parentCommentId 
+    }).returning();
+    return comment;
+  }
+
+  async getProductComments(productId: string): Promise<(ProductComment & { user: User; replies: (ProductComment & { user: User })[] })[]> {
+    // Get top-level comments (no parent)
+    const topLevelComments = await db
+      .select()
+      .from(productComments)
+      .leftJoin(users, eq(productComments.userId, users.id))
+      .where(and(
+        eq(productComments.productId, productId),
+        eq(productComments.parentCommentId, null) // Only top-level comments
+      ))
+      .orderBy(desc(productComments.createdAt));
+
+    // Get all replies for these comments
+    const commentIds = topLevelComments.map(row => row.product_comments.id);
+    
+    let replies: any[] = [];
+    if (commentIds.length > 0) {
+      replies = await db
+        .select()
+        .from(productComments)
+        .leftJoin(users, eq(productComments.userId, users.id))
+        .where(inArray(productComments.parentCommentId, commentIds))
+        .orderBy(productComments.createdAt); // Oldest first for replies
+    }
+
+    // Group replies by parent comment ID
+    const repliesByParent = replies.reduce((acc, row) => {
+      const parentId = row.product_comments.parentCommentId;
+      if (!acc[parentId]) acc[parentId] = [];
+      acc[parentId].push({
+        ...row.product_comments,
+        user: row.users
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Combine comments with their replies
+    return topLevelComments.map(row => ({
+      ...row.product_comments,
+      user: row.users,
+      replies: repliesByParent[row.product_comments.id] || []
+    }));
   }
 
   async shareProduct(userId: string, productId: string): Promise<void> {

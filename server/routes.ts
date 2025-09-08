@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertProductSchema, insertVroomSchema, insertOrderSchema, insertMessageSchema, updateProfileSchema } from "@shared/schema";
+import { insertProductSchema, insertVroomSchema, insertOrderSchema, insertMessageSchema, insertProductCommentSchema, updateProfileSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -305,18 +305,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Product comment endpoints
   app.post('/api/products/:id/comment', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { content } = req.body;
-      if (!content) {
-        return res.status(400).json({ message: "Content is required" });
-      }
-      await storage.commentOnProduct(userId, req.params.id, content);
-      res.status(201).json({ message: "Comment added" });
+      const validatedData = insertProductCommentSchema.parse({
+        ...req.body,
+        productId: req.params.id
+      });
+      
+      const comment = await storage.commentOnProduct(
+        userId, 
+        validatedData.productId, 
+        validatedData.content,
+        validatedData.parentCommentId
+      );
+      
+      // Get the comment with user data
+      const user = await storage.getUser(userId);
+      res.status(201).json({ ...comment, user, replies: [] });
     } catch (error) {
       console.error("Error commenting on product:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
+  app.get('/api/products/:id/comments', async (req, res) => {
+    try {
+      const comments = await storage.getProductComments(req.params.id);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching product comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
     }
   });
 
