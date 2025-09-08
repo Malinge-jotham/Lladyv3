@@ -338,7 +338,15 @@ export default function Vroom() {
                 {vroom.products.map((product) => (
                   <ProductCard 
                     key={product.id} 
-                    product={product}
+                    product={{
+                      ...product,
+                      description: product.description || "",
+                      price: product.price.toString(),
+                      imageUrls: product.imageUrls || [],
+                      likes: 0,
+                      userId: product.userId,
+                      user: vroom.user
+                    }}
                     showAddToVroom={false}
                   />
                 ))}

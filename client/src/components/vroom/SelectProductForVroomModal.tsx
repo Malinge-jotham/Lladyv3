@@ -108,7 +108,7 @@ export default function SelectProductForVroomModal({
   if (!isOpen) return null;
 
   // Get products already in vroom
-  const productsInVroom = vroomProducts?.products?.map((p: any) => p.id) || [];
+  const productsInVroom = (vroomProducts as any)?.products?.map((p: any) => p.id) || [];
   
   // Filter out products already in vroom
   const availableProducts = userProducts?.filter(product => !productsInVroom.includes(product.id)) || [];
