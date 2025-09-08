@@ -5,7 +5,8 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 import MessageSellerButton from "@/components/product/MessageSellerButton";
-import { FaHeart, FaShoppingCart, FaBolt, FaStore } from "react-icons/fa";
+import { FaHeart, FaShoppingCart, FaBolt, FaStore, FaComment } from "react-icons/fa";
+import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 
 interface ProductCardProps {
   product: {
@@ -29,6 +30,7 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
   const { addToCart } = useCart();
   const { isAuthenticated, user } = useAuth();
   const [showVroomModal, setShowVroomModal] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
 
   const handleAddToCart = () => {
     addToCart(product.id);
@@ -41,6 +43,10 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
 
   const handleAddToVroom = () => {
     setShowVroomModal(true);
+  };
+
+  const handleShowComments = () => {
+    setShowCommentsModal(true);
   };
 
   const mainImage = product.imageUrls && product.imageUrls.length > 0 
@@ -104,7 +110,7 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
             </p>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <Button 
               onClick={handleAddToCart}
               className="flex-1"
@@ -124,6 +130,18 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
               Buy Now
             </Button>
           </div>
+          
+          {/* Comment button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleShowComments}
+            className="w-full text-muted-foreground hover:text-foreground"
+            data-testid={`button-comments-${product.id}`}
+          >
+            <FaComment className="w-3 h-3 mr-2" />
+            Comments
+          </Button>
 
           {/* Message Seller Button */}
           {isAuthenticated && (product.userId || product.user?.id) && (
@@ -159,6 +177,15 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
           onClose={() => setShowVroomModal(false)}
           productId={product.id}
           productName={product.name}
+        />
+      )}
+
+      {/* Comments Modal */}
+      {showCommentsModal && (
+        <ProductCommentsModal
+          isOpen={showCommentsModal}
+          onClose={() => setShowCommentsModal(false)}
+          product={product}
         />
       )}
     </>
