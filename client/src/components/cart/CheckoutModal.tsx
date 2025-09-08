@@ -74,7 +74,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems }: CheckoutMo
           sellerId: item.product.userId,
           productId: item.productId,
           quantity: item.quantity,
-          totalAmount: parseFloat(item.product.price) * item.quantity,
+          totalAmount: (parseFloat(item.product.price) * item.quantity).toString(),
           shippingAddress,
         });
       }
