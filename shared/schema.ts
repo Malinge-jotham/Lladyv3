@@ -83,6 +83,7 @@ export const productComments = pgTable("product_comments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  parentCommentId: varchar("parent_comment_id").references(() => productComments.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -205,6 +206,25 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   messages: many(messages),
 }));
 
+export const productCommentsRelations = relations(productComments, ({ one, many }) => ({
+  user: one(users, {
+    fields: [productComments.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [productComments.productId],
+    references: [products.id],
+  }),
+  parentComment: one(productComments, {
+    fields: [productComments.parentCommentId],
+    references: [productComments.id],
+    relationName: "parent",
+  }),
+  replies: many(productComments, {
+    relationName: "parent",
+  }),
+}));
+
 export const messagesRelations = relations(messages, ({ one }) => ({
   sender: one(users, {
     fields: [messages.senderId],
@@ -278,6 +298,12 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   content: true,
 });
 
+export const insertProductCommentSchema = createInsertSchema(productComments).pick({
+  productId: true,
+  parentCommentId: true,
+  content: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -290,4 +316,6 @@ export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+export type InsertProductComment = z.infer<typeof insertProductCommentSchema>;
+export type ProductComment = typeof productComments.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
