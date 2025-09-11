@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const {
@@ -23,34 +23,23 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (authLoading) return;
+
+    // Handle both auth error and API error cases
+    if (!isAuthenticated || (error && isUnauthorizedError(error as Error))) {
       toast({
         title: "Unauthorized",
         description: "You are logged out. Logging in again...",
         variant: "destructive",
       });
+
       setTimeout(() => {
         window.location.href = "/api/login";
       }, 500);
-      return;
     }
-  }, [isAuthenticated, isLoading, toast]);
+  }, [isAuthenticated, authLoading, error, toast]);
 
-  useEffect(() => {
-    if (error && isUnauthorizedError(error as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [error, toast]);
-
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -64,7 +53,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      
+
       {/* Main Content */}
       <div className="flex-1 ml-64">
         <div className="flex">

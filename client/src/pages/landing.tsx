@@ -60,7 +60,7 @@ export default function Landing() {
                   className="w-full"
                   data-testid="input-password"
                 />
-                
+
                 <Button
                   onClick={handleEmailAuth}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
