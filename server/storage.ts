@@ -520,6 +520,17 @@ export class DatabaseStorage implements IStorage {
 
   // Message operations
   async sendMessage(senderId: string, message: InsertMessage): Promise<Message> {
+    // Validate that the receiver exists
+    const receiver = await this.getUser(message.receiverId);
+    if (!receiver) {
+      throw new Error("Receiver not found");
+    }
+    
+    // Prevent users from sending messages to themselves
+    if (senderId === message.receiverId) {
+      throw new Error("Cannot send message to yourself");
+    }
+
     const [newMessage] = await db
       .insert(messages)
       .values({ ...message, senderId })

@@ -296,6 +296,12 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   receiverId: true,
   orderId: true,
   content: true,
+}).extend({
+  content: z.string()
+    .min(1, "Message content cannot be empty")
+    .max(1000, "Message content cannot exceed 1000 characters")
+    .trim(),
+  receiverId: z.string().min(1, "Receiver ID is required"),
 });
 
 export const insertProductCommentSchema = createInsertSchema(productComments).pick({
