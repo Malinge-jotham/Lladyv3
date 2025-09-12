@@ -12,6 +12,7 @@ import Trending from "@/pages/trending";
 import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -27,6 +28,7 @@ function Router() {
           <Route path="/messages" component={Messages} />
           <Route path="/trending" component={Trending} />
           <Route path="/profile" component={Profile} />
+         
         </>
       )}
       <Route component={NotFound} />

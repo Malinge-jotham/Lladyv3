@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 import MessageSellerButton from "@/components/product/MessageSellerButton";
-import { FaHeart, FaShoppingCart, FaBolt, FaStore, FaComment } from "react-icons/fa";
+import { FaHeart, FaShoppingCart, FaShare, FaStore, FaComment } from "react-icons/fa";
 import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 
 interface ProductCardProps {
@@ -29,6 +30,7 @@ interface ProductCardProps {
 export default function ProductCard({ product, showAddToVroom = true }: ProductCardProps) {
   const { addToCart } = useCart();
   const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
   const [showVroomModal, setShowVroomModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
 
@@ -36,9 +38,26 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
     addToCart(product.id);
   };
 
-  const handleQuickBuy = () => {
-    // TODO: Implement quick buy functionality
-    console.log("Quick buy:", product.id);
+  const handleShare = async () => {
+    try {
+      // Construct the product URL
+      const productUrl = `${window.location.origin}/product/${product.id}`;
+
+      // Use the Clipboard API to copy the URL
+      await navigator.clipboard.writeText(productUrl);
+
+      toast({
+        title: "Link Copied!",
+        description: "Product link has been copied to clipboard.",
+      });
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      toast({
+        title: "Error",
+        description: "Failed to copy link. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAddToVroom = () => {
@@ -83,7 +102,7 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
             </Button>
           )}
         </div>
-        
+
         <CardContent className="p-4">
           <h3 className="font-semibold mb-2" data-testid={`product-name-${product.id}`}>
             {product.name}
@@ -91,7 +110,7 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
           <p className="text-muted-foreground text-sm mb-3 line-clamp-2" data-testid={`product-description-${product.id}`}>
             {product.description}
           </p>
-          
+
           <div className="flex items-center justify-between mb-3">
             <span className="text-xl font-bold text-primary" data-testid={`product-price-${product.id}`}>
               ${displayPrice}
@@ -119,18 +138,18 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
               <FaShoppingCart className="w-4 h-4 mr-2" />
               Add to Cart
             </Button>
-            
+
             <Button 
-              onClick={handleQuickBuy}
+              onClick={handleShare}
               variant="outline"
               className="flex-1"
-              data-testid={`button-quick-buy-${product.id}`}
+              data-testid={`button-share-${product.id}`}
             >
-              <FaBolt className="w-4 h-4 mr-2" />
-              Buy Now
+              <FaShare className="w-4 h-4 mr-2" />
+              Share
             </Button>
           </div>
-          
+
           {/* Comment button */}
           <Button
             variant="ghost"

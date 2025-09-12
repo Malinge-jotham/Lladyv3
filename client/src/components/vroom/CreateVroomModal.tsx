@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { FaPlus, FaStore, FaCamera } from "react-icons/fa";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FaPlus, FaStore, FaCamera, FaLink, FaTimes } from "react-icons/fa";
 import type { UploadResult } from "@uppy/core";
 
 interface CreateVroomModalProps {
@@ -34,6 +35,9 @@ export default function CreateVroomModal({ trigger, isOpen, onClose }: CreateVro
     isPublic: true,
   });
   const [coverImageUrl, setCoverImageUrl] = useState<string>("");
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [activeTab, setActiveTab] = useState("upload");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createVroomMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -74,7 +78,7 @@ export default function CreateVroomModal({ trigger, isOpen, onClose }: CreateVro
         });
         const data = await response.json();
         setCoverImageUrl(data.objectPath);
-        
+
         toast({
           title: "Success",
           description: "Cover image uploaded successfully!",
@@ -89,9 +93,70 @@ export default function CreateVroomModal({ trigger, isOpen, onClose }: CreateVro
     }
   };
 
+  const handleAddUrlImage = () => {
+    if (!imageUrlInput) {
+      toast({
+        title: "Error",
+        description: "Please enter an image URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Basic URL validation
+      new URL(imageUrlInput);
+      setCoverImageUrl(imageUrlInput);
+      setImageUrlInput("");
+
+      toast({
+        title: "Success",
+        description: "Image URL added successfully!",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid URL",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast({
+        title: "Error",
+        description: "File is too large. Maximum size is 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageUrl = event.target?.result as string;
+      setCoverImageUrl(imageUrl);
+
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully!",
+      });
+    };
+    reader.readAsDataURL(file);
+
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -110,6 +175,8 @@ export default function CreateVroomModal({ trigger, isOpen, onClose }: CreateVro
   const handleClose = () => {
     setFormData({ name: "", description: "", isPublic: true });
     setCoverImageUrl("");
+    setImageUrlInput("");
+    setActiveTab("upload");
     if (onClose) {
       onClose();
     } else {
@@ -135,7 +202,7 @@ export default function CreateVroomModal({ trigger, isOpen, onClose }: CreateVro
           </Button>
         </DialogTrigger>
       )}
-      
+
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="create-vroom-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -171,23 +238,72 @@ export default function CreateVroomModal({ trigger, isOpen, onClose }: CreateVro
 
           <div className="space-y-2">
             <Label>Cover Image</Label>
-            <ObjectUploader
-              maxNumberOfFiles={1}
-              maxFileSize={5 * 1024 * 1024} // 5MB
-              onGetUploadParameters={handleGetUploadParameters}
-              onComplete={handleImageUpload}
-              buttonClassName="w-full"
-            >
-              <FaCamera className="w-4 h-4 mr-2" />
-              Upload Cover Image
-            </ObjectUploader>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-2 mb-3">
+                <TabsTrigger value="upload" className="flex items-center gap-2">
+                  <FaCamera className="h-3 w-3" />
+                  Upload
+                </TabsTrigger>
+                <TabsTrigger value="url" className="flex items-center gap-2">
+                  <FaLink className="h-3 w-3" />
+                  URL
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="upload" className="space-y-3">
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FaCamera className="h-6 w-6 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB</p>
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="url" className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="Paste image URL here"
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={handleAddUrlImage}
+                    disabled={!imageUrlInput}
+                  >
+                    Add Image
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+
             {coverImageUrl && (
-              <div className="mt-2">
+              <div className="mt-3 relative">
                 <img
                   src={coverImageUrl}
                   alt="Cover preview"
                   className="w-full h-32 object-cover rounded-lg"
                 />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  onClick={() => setCoverImageUrl("")}
+                >
+                  <FaTimes className="h-3 w-3" />
+                </Button>
               </div>
             )}
           </div>

@@ -364,7 +364,7 @@ export default function ProductCommentsModal({
                   comment={comment}
                   productId={product.id}
                   onReply={handleReply}
-                  currentUserId={user?.id}
+                  currentUserId={user?.id || ''}
                 />
               ))}
               <div ref={commentsEndRef} />
@@ -399,7 +399,7 @@ export default function ProductCommentsModal({
             </div>
             <div className="flex space-x-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.profileImageUrl} alt="Your avatar" />
+                <AvatarImage src={user?.profileImageUrl || ''} alt="Your avatar" />
                 <AvatarFallback>
                   <FaUser className="text-xs" aria-hidden="true" />
                 </AvatarFallback>
@@ -437,7 +437,7 @@ export default function ProductCommentsModal({
           <div className="border-t p-4">
             <div className="flex space-x-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.profileImageUrl} alt="Your avatar" />
+                <AvatarImage src={user?.profileImageUrl || ''} alt="Your avatar" />
                 <AvatarFallback>
                   <FaUser className="text-xs" aria-hidden="true" />
                 </AvatarFallback>
