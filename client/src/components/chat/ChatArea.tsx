@@ -41,7 +41,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       setMessageText("");
-      
+
       // Send via WebSocket for real-time updates
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
@@ -125,11 +125,11 @@ export default function ChatArea({ userId }: ChatAreaProps) {
         }));
       }
     }
-    
+
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
-    
+
     const timeout = setTimeout(() => {
       setIsTyping(false);
       if (socket) {
@@ -141,13 +141,13 @@ export default function ChatArea({ userId }: ChatAreaProps) {
         }));
       }
     }, 1000);
-    
+
     setTypingTimeout(timeout);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!messageText.trim()) return;
 
     sendMessageMutation.mutate({
@@ -197,7 +197,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
               >
                 <FaArrowLeft className="w-5 h-5" />
               </Button>
-              
+
               <div className="relative">
                 {(otherUser as any).profileImageUrl ? (
                   <img
@@ -214,7 +214,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
                 )}
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
               </div>
-              
+
               <div>
                 <h3 className="font-bold text-gray-900 text-lg" data-testid="chat-user-name">
                   {(otherUser as any)?.firstName} {(otherUser as any)?.lastName}
@@ -222,7 +222,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
                 <p className="text-sm text-green-600 font-medium">Online</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <Button 
                 variant="ghost" 
@@ -258,7 +258,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
             const isOwnMessage = message.senderId === (currentUser as any)?.id;
             const nextMessage = messages[index + 1];
             const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
-            
+
             return (
               <div
                 key={message.id}
@@ -312,7 +312,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
             >
               <FaPaperclip className="w-5 h-5" />
             </Button>
-            
+
             {/* Message Input Field */}
             <div className="flex-1 relative">
               <Input
@@ -327,7 +327,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
                 data-testid="input-message"
               />
             </div>
-            
+
             {/* Emoji Button */}
             <Button
               type="button"
@@ -338,7 +338,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
             >
               <FaSmile className="w-5 h-5" />
             </Button>
-            
+
             {/* Send Button */}
             <Button
               type="submit"
