@@ -10,6 +10,7 @@ import {
   follows,
   vroomFollows,
   messages,
+  imageBucket,
   type User,
   type UpsertUser,
   type UpdateProfile,
@@ -21,6 +22,8 @@ import {
   type InsertOrder,
   type Message,
   type InsertMessage,
+  type ImageBucket,
+  type InsertImageBucket,
   type CartItem,
   type InsertProductComment,
   type ProductComment,
@@ -89,6 +92,13 @@ export interface IStorage {
   // Search operations
   searchUsers(query: string, excludeUserId: string): Promise<User[]>;
   searchVrooms(query: string): Promise<Vroom[]>;
+
+  // Image bucket operations
+  uploadImage(userId: string, image: InsertImageBucket): Promise<ImageBucket>;
+  getImagesByUser(userId: string): Promise<ImageBucket[]>;
+  getImage(imageId: string): Promise<ImageBucket | undefined>;
+  deleteImage(imageId: string, userId: string): Promise<void>;
+  updateImageMetadata(imageId: string, userId: string, metadata: Partial<InsertImageBucket>): Promise<ImageBucket>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -645,6 +655,46 @@ export class DatabaseStorage implements IStorage {
       .from(follows)
       .innerJoin(users, eq(follows.followingId, users.id))
       .where(eq(follows.followerId, userId));
+  }
+
+  // Image bucket operations
+  async uploadImage(userId: string, image: InsertImageBucket): Promise<ImageBucket> {
+    const [newImage] = await db
+      .insert(imageBucket)
+      .values({ ...image, userId })
+      .returning();
+    return newImage;
+  }
+
+  async getImagesByUser(userId: string): Promise<ImageBucket[]> {
+    return await db
+      .select()
+      .from(imageBucket)
+      .where(eq(imageBucket.userId, userId))
+      .orderBy(desc(imageBucket.createdAt));
+  }
+
+  async getImage(imageId: string): Promise<ImageBucket | undefined> {
+    const [image] = await db
+      .select()
+      .from(imageBucket)
+      .where(eq(imageBucket.id, imageId));
+    return image;
+  }
+
+  async deleteImage(imageId: string, userId: string): Promise<void> {
+    await db
+      .delete(imageBucket)
+      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.userId, userId)));
+  }
+
+  async updateImageMetadata(imageId: string, userId: string, metadata: Partial<InsertImageBucket>): Promise<ImageBucket> {
+    const [updatedImage] = await db
+      .update(imageBucket)
+      .set({ ...metadata, updatedAt: new Date() })
+      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.userId, userId)))
+      .returning();
+    return updatedImage;
   }
 }
 

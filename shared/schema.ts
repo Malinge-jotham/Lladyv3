@@ -180,6 +180,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   following: many(follows, { relationName: "follower" }),
   followers: many(follows, { relationName: "following" }),
   vroomFollows: many(vroomFollows),
+  images: many(imageBucket),
 }));
 
 export const vromsRelations = relations(vrooms, ({ one, many }) => ({
@@ -261,6 +262,13 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
+export const imageBucketRelations = relations(imageBucket, ({ one }) => ({
+  user: one(users, {
+    fields: [imageBucket.userId],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -329,6 +337,23 @@ export const insertProductCommentSchema = createInsertSchema(productComments).pi
   content: true,
 });
 
+export const insertImageBucketSchema = createInsertSchema(imageBucket).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  filename: z.string().min(1, "Filename is required"),
+  originalName: z.string().min(1, "Original name is required"),
+  mimeType: z.string().min(1, "MIME type is required"),
+  fileSize: z.number().positive("File size must be positive"),
+  imageUrl: z.string().url("Must be a valid URL"),
+  bucketPath: z.string().min(1, "Bucket path is required"),
+  description: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  width: z.number().positive().optional(),
+  height: z.number().positive().optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -343,4 +368,6 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertProductComment = z.infer<typeof insertProductCommentSchema>;
 export type ProductComment = typeof productComments.$inferSelect;
+export type InsertImageBucket = z.infer<typeof insertImageBucketSchema>;
+export type ImageBucket = typeof imageBucket.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
