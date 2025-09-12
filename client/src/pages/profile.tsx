@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -9,9 +9,7 @@ import VroomCard from "@/components/vroom/VroomCard";
 import CreateVroomModal from "@/components/vroom/CreateVroomModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +17,11 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaUsers, FaHeart, FaCamera, FaPlus } from "react-icons/fa";
+import { 
+  FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaHeart, 
+  FaCamera, FaPlus, FaLink, FaGlobe, FaTwitter, FaInstagram,
+  FaUser, FaSignature
+} from "react-icons/fa";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
@@ -28,6 +30,7 @@ export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("products");
 
   // Fetch user's profile data
   const { data: profileData, isLoading: profileLoading } = useQuery({
@@ -41,10 +44,23 @@ export default function Profile() {
     enabled: !!user,
   });
 
-  // Fetch user's vrooms
+  // Fetch user's vrooms with product counts
   const { data: userVrooms, isLoading: vroomsLoading } = useQuery({
     queryKey: ["/api/vrooms/user"],
     enabled: !!user,
+    select: (data) => {
+      if (Array.isArray(data)) {
+        return data.map(vroom => ({
+          ...vroom,
+          _count: {
+            products: vroom.products?.length || vroom._count?.products || vroom.stats?.products || 0,
+            followers: vroom._count?.followers || vroom.stats?.followers || 0,
+            views: vroom._count?.views || vroom.stats?.views || 0,
+          }
+        }));
+      }
+      return data;
+    },
   });
 
   // Edit profile form
@@ -54,8 +70,26 @@ export default function Profile() {
       lastName: (user as any)?.lastName || "",
       bio: (profileData as any)?.bio || "",
       location: (profileData as any)?.location || "",
+      website: (profileData as any)?.website || "",
+      twitter: (profileData as any)?.twitter || "",
+      instagram: (profileData as any)?.instagram || "",
     },
   });
+
+  // Reset form when profile data changes
+  useEffect(() => {
+    if (profileData) {
+      form.reset({
+        firstName: (user as any)?.firstName || "",
+        lastName: (user as any)?.lastName || "",
+        bio: (profileData as any)?.bio || "",
+        location: (profileData as any)?.location || "",
+        website: (profileData as any)?.website || "",
+        twitter: (profileData as any)?.twitter || "",
+        instagram: (profileData as any)?.instagram || "",
+      });
+    }
+  }, [profileData, user, form]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
@@ -109,13 +143,12 @@ export default function Profile() {
           imageURL: uploadedFile.uploadURL,
           type: type,
         });
-        
+
         toast({
           title: `${type === 'profile' ? 'Profile' : 'Banner'} image updated`,
           description: `Your ${type === 'profile' ? 'profile' : 'banner'} image has been updated successfully.`,
         });
-        
-        // Invalidate and refetch
+
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
         queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       } catch (error) {
@@ -140,12 +173,16 @@ export default function Profile() {
         <div className="flex-1 ml-64 mr-80">
           <div className="max-w-4xl mx-auto p-6">
             <div className="space-y-6">
-              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-32 w-32 rounded-full -mt-16 border-4 border-background" />
+                <Skeleton className="h-10 w-32 rounded-md" />
+              </div>
               <Skeleton className="h-8 w-1/3" />
               <Skeleton className="h-4 w-2/3" />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-80 w-full" />
+                  <Skeleton key={i} className="h-80 w-full rounded-xl" />
                 ))}
               </div>
             </div>
@@ -163,17 +200,19 @@ export default function Profile() {
     vrooms: userVrooms && Array.isArray(userVrooms) ? userVrooms.length : 0,
   };
 
+  const userInitial = (user as any)?.firstName?.[0] || (user as any)?.email?.[0] || '?';
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="flex-1 ml-64 mr-80">
         <div className="max-w-4xl mx-auto p-6">
           {/* Profile Header */}
-          <Card className="mb-6" data-testid="profile-header">
+          <Card className="mb-6 overflow-hidden border-0 shadow-lg" data-testid="profile-header">
             <CardContent className="p-0">
               {/* Cover Image */}
-              <div className="h-48 relative overflow-hidden">
+              <div className="h-48 relative overflow-hidden bg-gradient-to-r from-blue-400 to-purple-500">
                 {(profileData as any)?.user?.bannerImageUrl ? (
                   <img
                     src={(profileData as any).user.bannerImageUrl}
@@ -181,109 +220,81 @@ export default function Profile() {
                     className="w-full h-full object-cover"
                     data-testid="profile-banner"
                   />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-accent/20 to-primary/20" />
-                )}
-                {/* Profile Image */}
-                <div className="absolute -bottom-12 left-6">
-                  {(profileData as any)?.user?.profileImageUrl || (user as any)?.profileImageUrl ? (
-                    <img
-                      src={(profileData as any)?.user?.profileImageUrl || (user as any).profileImageUrl}
-                      alt="Profile"
-                      className="w-24 h-24 rounded-full object-cover border-4 border-background"
-                      data-testid="profile-avatar"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-muted border-4 border-background flex items-center justify-center">
-                      <span className="text-2xl font-bold text-muted-foreground">
-                        {(user as any)?.firstName?.[0] || (user as any)?.email?.[0] || '?'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Edit Profile Button */}
-                <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+                ) : null}
+
+                {/* Banner Upload Overlay */}
+                <Dialog>
                   <DialogTrigger asChild>
                     <Button 
-                      variant="outline" 
-                      className="absolute bottom-4 right-4"
-                      data-testid="edit-profile-button"
+                      variant="secondary" 
+                      size="sm"
+                      className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm hover:bg-background"
                     >
-                      <FaEdit className="w-4 h-4 mr-2" />
-                      Edit Profile
+                      <FaCamera className="w-4 h-4 mr-2" />
+                      Edit Banner
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md" data-testid="edit-profile-modal">
+                  <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
+                      <DialogTitle>Update Banner Image</DialogTitle>
                     </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="firstName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl>
-                                  <Input {...field} data-testid="input-first-name" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="lastName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl>
-                                  <Input {...field} data-testid="input-last-name" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                    <div className="py-4">
+                      <ObjectUploader
+                        maxNumberOfFiles={1}
+                        maxFileSize={5 * 1024 * 1024}
+                        onGetUploadParameters={handleGetUploadParameters}
+                        onComplete={(result) => handleImageUpload(result, 'banner')}
+                        buttonClassName="w-full"
+                      >
+                        <FaCamera className="w-4 h-4 mr-2" />
+                        Upload Banner Image
+                      </ObjectUploader>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Profile Content */}
+              <div className="px-8 pb-8">
+                {/* Profile Image */}
+                <div className="flex justify-between items-start -mt-20 mb-6">
+                  <div className="relative group">
+                    <div className="w-40 h-40 rounded-full border-4 border-background bg-background overflow-hidden shadow-lg">
+                      {(profileData as any)?.user?.profileImageUrl || (user as any)?.profileImageUrl ? (
+                        <img
+                          src={(profileData as any)?.user?.profileImageUrl || (user as any).profileImageUrl}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          data-testid="profile-avatar"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                          <span className="text-5xl font-bold text-white">
+                            {userInitial}
+                          </span>
                         </div>
-                        <FormField
-                          control={form.control}
-                          name="bio"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Bio</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  {...field} 
-                                  placeholder="Tell us about yourself..."
-                                  data-testid="input-bio"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Location</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="City, Country" data-testid="input-location" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {/* Profile Image Upload */}
-                        <div className="space-y-2">
-                          <Label>Profile Photo</Label>
+                      )}
+                    </div>
+
+                    {/* Profile Image Upload Overlay */}
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="secondary" 
+                          size="icon"
+                          className="absolute bottom-2 right-2 rounded-full w-10 h-10 bg-background/80 backdrop-blur-sm group-hover:bg-background"
+                        >
+                          <FaCamera className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Update Profile Photo</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
                           <ObjectUploader
                             maxNumberOfFiles={1}
-                            maxFileSize={5 * 1024 * 1024} // 5MB
+                            maxFileSize={5 * 1024 * 1024}
                             onGetUploadParameters={handleGetUploadParameters}
                             onComplete={(result) => handleImageUpload(result, 'profile')}
                             buttonClassName="w-full"
@@ -292,92 +303,300 @@ export default function Profile() {
                             Upload Profile Photo
                           </ObjectUploader>
                         </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
 
-                        {/* Banner Image Upload */}
-                        <div className="space-y-2">
-                          <Label>Banner Image</Label>
-                          <ObjectUploader
-                            maxNumberOfFiles={1}
-                            maxFileSize={5 * 1024 * 1024} // 5MB
-                            onGetUploadParameters={handleGetUploadParameters}
-                            onComplete={(result) => handleImageUpload(result, 'banner')}
-                            buttonClassName="w-full"
-                          >
-                            <FaCamera className="w-4 h-4 mr-2" />
-                            Upload Banner Image
-                          </ObjectUploader>
-                        </div>
+                  {/* Edit Profile Button */}
+                  <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        data-testid="edit-profile-button"
+                      >
+                        <FaEdit className="w-4 h-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="edit-profile-modal">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                          <FaUser className="w-5 h-5" />
+                          Edit Profile
+                        </DialogTitle>
+                      </DialogHeader>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="firstName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FaSignature className="w-3 h-3" />
+                                    First Name
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      data-testid="input-first-name" 
+                                      autoFocus
+                                      onFocus={(e) => e.target.select()}
+                                      className="h-11"
+                                      placeholder="Enter your first name"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="lastName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FaSignature className="w-3 h-3" />
+                                    Last Name
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      data-testid="input-last-name" 
+                                      onFocus={(e) => e.target.select()}
+                                      className="h-11"
+                                      placeholder="Enter your last name"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
 
-                        <div className="flex gap-3 pt-4">
-                          <Button 
-                            type="submit" 
-                            disabled={updateProfileMutation.isPending}
-                            data-testid="button-save-profile"
-                          >
-                            {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => setEditModalOpen(false)}
-                            data-testid="button-cancel-edit"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              
-              {/* Profile Info */}
-              <div className="pt-16 px-6 pb-6">
+                          <FormField
+                            control={form.control}
+                            name="bio"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                  <FaUser className="w-3 h-3" />
+                                  Bio
+                                </FormLabel>
+                                <FormControl>
+                                  <Textarea 
+                                    {...field} 
+                                    placeholder="Tell us about yourself..."
+                                    data-testid="input-bio"
+                                    className="min-h-[120px] resize-none"
+                                    onFocus={(e) => e.target.select()}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="location"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                  <FaMapMarkerAlt className="w-3 h-3" />
+                                  Location
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    placeholder="City, Country" 
+                                    data-testid="input-location" 
+                                    onFocus={(e) => e.target.select()}
+                                    className="h-11"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="website"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FaGlobe className="w-3 h-3" />
+                                    Website
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      placeholder="https://example.com" 
+                                      onFocus={(e) => e.target.select()}
+                                      className="h-11"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="twitter"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FaTwitter className="w-3 h-3" />
+                                    Twitter
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      placeholder="@username" 
+                                      onFocus={(e) => e.target.select()}
+                                      className="h-11"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="instagram"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FaInstagram className="w-3 h-3" />
+                                    Instagram
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      placeholder="@username" 
+                                      onFocus={(e) => e.target.select()}
+                                      className="h-11"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="flex gap-3 pt-4 justify-end border-t">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setEditModalOpen(false)}
+                              data-testid="button-cancel-edit"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              disabled={updateProfileMutation.isPending}
+                              data-testid="button-save-profile"
+                              className="bg-primary hover:bg-primary/90"
+                            >
+                              {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* Profile Info */}
                 <div className="space-y-4">
                   <div>
-                    <h1 className="text-2xl font-bold" data-testid="profile-name">
+                    <h1 className="text-3xl font-bold" data-testid="profile-name">
                       {(user as any)?.firstName} {(user as any)?.lastName}
                     </h1>
-                    <p className="text-muted-foreground" data-testid="profile-email">
+                    <p className="text-muted-foreground text-lg" data-testid="profile-email">
                       @{(user as any)?.email?.split('@')[0]}
                     </p>
                   </div>
-                  
+
                   {(profileData as any)?.bio && (
-                    <p className="text-foreground" data-testid="profile-bio">
+                    <p className="text-foreground text-lg leading-relaxed" data-testid="profile-bio">
                       {(profileData as any).bio}
                     </p>
                   )}
-                  
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+
+                  <div className="flex flex-wrap gap-4 text-muted-foreground">
                     {(profileData as any)?.location && (
-                      <span className="flex items-center gap-1" data-testid="profile-location">
+                      <span className="flex items-center gap-2" data-testid="profile-location">
                         <FaMapMarkerAlt className="w-4 h-4" />
                         {(profileData as any).location}
                       </span>
                     )}
-                    <span className="flex items-center gap-1" data-testid="profile-joined">
+                    <span className="flex items-center gap-2" data-testid="profile-joined">
                       <FaCalendarAlt className="w-4 h-4" />
                       Joined {new Date((user as any)?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </span>
+
+                    {/* Social Links */}
+                    {(profileData as any)?.website && (
+                      <a 
+                        href={(profileData as any).website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-500 hover:text-blue-600 hover:underline"
+                      >
+                        <FaGlobe className="w-4 h-4" />
+                        Website
+                      </a>
+                    )}
+
+                    {(profileData as any)?.twitter && (
+                      <a 
+                        href={`https://twitter.com/${(profileData as any).twitter.replace('@', '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-400 hover:text-blue-500 hover:underline"
+                      >
+                        <FaTwitter className="w-4 h-4" />
+                        {(profileData as any).twitter}
+                      </a>
+                    )}
+
+                    {(profileData as any)?.instagram && (
+                      <a 
+                        href={`https://instagram.com/${(profileData as any).instagram.replace('@', '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-pink-500 hover:text-pink-600 hover:underline"
+                      >
+                        <FaInstagram className="w-4 h-4" />
+                        {(profileData as any).instagram}
+                      </a>
+                    )}
                   </div>
-                  
+
                   {/* Stats */}
-                  <div className="flex gap-6" data-testid="profile-stats">
+                  <div className="flex gap-8 pt-4" data-testid="profile-stats">
                     <div className="text-center">
-                      <div className="font-bold text-lg">{profileStats.posts}</div>
-                      <div className="text-sm text-muted-foreground">Posts</div>
+                      <div className="font-bold text-2xl">{profileStats.posts}</div>
+                      <div className="text-sm text-muted-foreground">Products</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-lg">{profileStats.vrooms}</div>
+                      <div className="font-bold text-2xl">{profileStats.vrooms}</div>
                       <div className="text-sm text-muted-foreground">Vrooms</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-lg">{profileStats.followers}</div>
+                      <div className="font-bold text-2xl">{profileStats.followers}</div>
                       <div className="text-sm text-muted-foreground">Followers</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-lg">{profileStats.following}</div>
+                      <div className="font-bold text-2xl">{profileStats.following}</div>
                       <div className="text-sm text-muted-foreground">Following</div>
                     </div>
                   </div>
@@ -386,20 +605,32 @@ export default function Profile() {
             </CardContent>
           </Card>
 
-          {/* Products and Vrooms Section */}
-          <div className="space-y-6">
-            {/* Products Section */}
-            <Card data-testid="profile-products-section">
+          {/* Content Navigation */}
+          <div className="flex border-b mb-6">
+            <button
+              className={`px-4 py-3 font-medium text-lg ${activeTab === "products" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setActiveTab("products")}
+            >
+              <FaHeart className="inline mr-2" />
+              Products ({profileStats.posts})
+            </button>
+            <button
+              className={`px-4 py-3 font-medium text-lg ${activeTab === "vrooms" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setActiveTab("vrooms")}
+            >
+              <FaStore className="inline mr-2" />
+              Vrooms ({profileStats.vrooms})
+            </button>
+          </div>
+
+          {/* Content Section */}
+          {activeTab === "products" ? (
+            <Card data-testid="profile-products-section" className="border-0 shadow-lg">
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                  <FaHeart className="text-accent" />
-                  My Products ({profileStats.posts})
-                </h2>
-                
                 {productsLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(6)].map((_, i) => (
-                      <Skeleton key={i} className="h-80 w-full" />
+                      <Skeleton key={i} className="h-80 w-full rounded-xl" />
                     ))}
                   </div>
                 ) : userProducts && Array.isArray(userProducts) && userProducts.length > 0 ? (
@@ -409,39 +640,40 @@ export default function Profile() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground" data-testid="empty-user-products">
-                    <FaHeart className="mx-auto text-4xl mb-4 opacity-50" />
-                    <p>You haven't posted any products yet.</p>
-                    <p className="text-sm">Share your first product to get started!</p>
+                  <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-products">
+                    <FaHeart className="mx-auto text-5xl mb-4 opacity-30" />
+                    <h3 className="text-xl font-medium mb-2">No products yet</h3>
+                    <p className="mb-6">You haven't posted any products yet.</p>
+                    <Button className="bg-primary hover:bg-primary/90">
+                      Share Your First Product
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            {/* Vrooms Section */}
-            <Card data-testid="profile-vrooms-section">
+          ) : (
+            <Card data-testid="profile-vrooms-section" className="border-0 shadow-lg">
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                  <FaStore className="text-accent" />
-                  My Vrooms ({profileStats.vrooms})
-                </h2>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div />
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold">Your Vrooms</h3>
                   <CreateVroomModal
                     trigger={
-                      <Button size="sm" data-testid="button-create-vroom-profile">
+                      <Button 
+                        size="sm" 
+                        data-testid="button-create-vroom-profile"
+                        className="bg-primary hover:bg-primary/90"
+                      >
                         <FaPlus className="mr-2" />
                         Create Vroom
                       </Button>
                     }
                   />
                 </div>
-                
+
                 {vroomsLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-48 w-full" />
+                      <Skeleton key={i} className="h-48 w-full rounded-xl" />
                     ))}
                   </div>
                 ) : userVrooms && Array.isArray(userVrooms) && userVrooms.length > 0 ? (
@@ -452,23 +684,23 @@ export default function Profile() {
                         vroom={{
                           ...vroom,
                           user: profileData?.user,
-                          stats: {
-                            products: 0, // TODO: Get actual product count
-                            followers: 0, // TODO: Get actual followers
-                            views: 0, // TODO: Get actual views
-                          }
+                          _count: vroom._count,
+                          stats: vroom.stats
                         }} 
                       />
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground" data-testid="empty-user-vrooms">
-                    <FaStore className="mx-auto text-4xl mb-4 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">No vrooms yet</h3>
-                    <p className="mb-4">Create your first vroom to organize your products!</p>
+                  <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-vrooms">
+                    <FaStore className="mx-auto text-5xl mb-4 opacity-30" />
+                    <h3 className="text-xl font-medium mb-2">No vrooms yet</h3>
+                    <p className="mb-6">Create your first vroom to organize your products!</p>
                     <CreateVroomModal
                       trigger={
-                        <Button data-testid="button-create-first-vroom">
+                        <Button 
+                          data-testid="button-create-first-vroom"
+                          className="bg-primary hover:bg-primary/90"
+                        >
                           <FaPlus className="mr-2" />
                           Create Your First Vroom
                         </Button>
@@ -478,10 +710,10 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
-          </div>
+          )}
         </div>
       </div>
-      
+
       <RightSidebar />
     </div>
   );

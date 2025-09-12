@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -90,7 +91,7 @@ export default function ProductPost({ product }: ProductPostProps) {
     const now = new Date();
     const date = new Date(dateString);
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return "now";
     if (diffInHours < 24) return `${diffInHours}h`;
     return `${Math.floor(diffInHours / 24)}d`;
@@ -118,7 +119,7 @@ export default function ProductPost({ product }: ProductPostProps) {
             </span>
           </div>
         )}
-        
+
         <div className="flex-1 space-y-3">
           {/* User Info */}
           <div className="flex items-center space-x-2">
@@ -139,7 +140,7 @@ export default function ProductPost({ product }: ProductPostProps) {
             <p data-testid={`product-description-${product.id}`}>
               {product.description}
             </p>
-            
+
             {/* Product Image */}
             <img
               src={mainImage}
@@ -147,7 +148,7 @@ export default function ProductPost({ product }: ProductPostProps) {
               className="rounded-xl w-full object-cover max-h-96"
               data-testid={`product-image-${product.id}`}
             />
-            
+
             {/* Product Details */}
             <div className="bg-secondary/50 p-4 rounded-lg">
               <div className="flex items-center justify-between mb-2">
