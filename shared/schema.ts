@@ -345,13 +345,13 @@ export const insertImageBucketSchema = createInsertSchema(imageBucket).omit({
   filename: z.string().min(1, "Filename is required"),
   originalName: z.string().min(1, "Original name is required"),
   mimeType: z.string().min(1, "MIME type is required"),
-  fileSize: z.number().positive("File size must be positive"),
+  fileSize: z.number().int().positive("File size must be a positive integer"),
   imageUrl: z.string().url("Must be a valid URL"),
   bucketPath: z.string().min(1, "Bucket path is required"),
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  width: z.number().positive().optional(),
-  height: z.number().positive().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
 });
 
 // Types

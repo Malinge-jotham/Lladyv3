@@ -96,7 +96,8 @@ export interface IStorage {
   // Image bucket operations
   uploadImage(userId: string, image: InsertImageBucket): Promise<ImageBucket>;
   getImagesByUser(userId: string): Promise<ImageBucket[]>;
-  getImage(imageId: string): Promise<ImageBucket | undefined>;
+  getImageForOwner(imageId: string, userId: string): Promise<ImageBucket | undefined>;
+  getPublicImage(imageId: string): Promise<ImageBucket | undefined>;
   deleteImage(imageId: string, userId: string): Promise<void>;
   updateImageMetadata(imageId: string, userId: string, metadata: Partial<InsertImageBucket>): Promise<ImageBucket>;
 }
@@ -674,11 +675,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(imageBucket.createdAt));
   }
 
-  async getImage(imageId: string): Promise<ImageBucket | undefined> {
+  async getImageForOwner(imageId: string, userId: string): Promise<ImageBucket | undefined> {
     const [image] = await db
       .select()
       .from(imageBucket)
-      .where(eq(imageBucket.id, imageId));
+      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.userId, userId)));
+    return image;
+  }
+
+  async getPublicImage(imageId: string): Promise<ImageBucket | undefined> {
+    const [image] = await db
+      .select()
+      .from(imageBucket)
+      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.isPublic, true)));
     return image;
   }
 
