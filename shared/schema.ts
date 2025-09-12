@@ -83,7 +83,7 @@ export const productComments = pgTable("product_comments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
-  parentCommentId: varchar("parent_comment_id").references(() => productComments.id, { onDelete: "cascade" }),
+  parentCommentId: varchar("parent_comment_id"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -29,7 +29,7 @@ import {
   type ProductComment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, or, like, ilike, not, inArray, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -267,7 +267,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(productComments.userId, users.id))
       .where(and(
         eq(productComments.productId, productId),
-        eq(productComments.parentCommentId, null) // Only top-level comments
+        isNull(productComments.parentCommentId) // Only top-level comments
       ))
       .orderBy(desc(productComments.createdAt));
 
@@ -298,7 +298,7 @@ export class DatabaseStorage implements IStorage {
     // Combine comments with their replies
     return topLevelComments.map(row => ({
       ...row.product_comments,
-      user: row.users,
+      user: row.users || { id: '', email: null, firstName: null, lastName: null, profileImageUrl: null, bannerImageUrl: null, username: null, bio: null, location: null, website: null, createdAt: null, updatedAt: null },
       replies: repliesByParent[row.product_comments.id] || []
     }));
   }
