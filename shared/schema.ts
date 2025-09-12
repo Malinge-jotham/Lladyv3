@@ -148,6 +148,25 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Image bucket for uploaded images
+export const imageBucket = pgTable("image_bucket", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  filename: varchar("filename").notNull(),
+  originalName: varchar("original_name").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  imageUrl: varchar("image_url").notNull(),
+  bucketPath: varchar("bucket_path").notNull(),
+  isPublic: boolean("is_public").default(false),
+  width: integer("width"),
+  height: integer("height"),
+  description: text("description"),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   products: many(products),

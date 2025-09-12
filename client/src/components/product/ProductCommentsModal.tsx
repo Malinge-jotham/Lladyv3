@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { FaUser, FaReply, FaTimes, FaComment, FaPaperPlane } from "react-icons/fa";
@@ -60,24 +59,32 @@ interface CommentProps {
   currentUserId?: string;
 }
 
-function CommentItem({ comment, productId, onReply, currentUserId }: CommentProps) {
-  const userName = comment.user.firstName || comment.user.lastName 
-    ? `${comment.user.firstName} ${comment.user.lastName}`.trim()
-    : "Anonymous";
-  
+// Memoized comment item to prevent unnecessary re-renders
+const CommentItem = ({ comment, productId, onReply, currentUserId }: CommentProps) => {
+  const userName = useMemo(() => {
+    return comment.user.firstName || comment.user.lastName 
+      ? `${comment.user.firstName} ${comment.user.lastName}`.trim()
+      : "Anonymous";
+  }, [comment.user.firstName, comment.user.lastName]);
+
   const isOwn = currentUserId === comment.userId;
+  const hasReplies = comment.replies && comment.replies.length > 0;
+
+  const handleReplyClick = useCallback(() => {
+    onReply(comment.id);
+  }, [comment.id, onReply]);
 
   return (
     <div className="space-y-3" data-testid={`comment-${comment.id}`}>
       {/* Main Comment */}
       <div className="flex space-x-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
-          <AvatarImage src={comment.user.profileImageUrl} />
+          <AvatarImage src={comment.user.profileImageUrl} alt={`${userName}'s avatar`} />
           <AvatarFallback>
             <FaUser className="text-xs" />
           </AvatarFallback>
         </Avatar>
-        
+
         <div className="flex-1 min-w-0">
           <div className={`rounded-2xl px-4 py-3 ${
             isOwn 
@@ -90,11 +97,14 @@ function CommentItem({ comment, productId, onReply, currentUserId }: CommentProp
               }`}>
                 {userName}
               </span>
-              <span className={`text-xs ${
-                isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-              }`}>
+              <time 
+                className={`text-xs ${
+                  isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+                }`}
+                dateTime={comment.createdAt}
+              >
                 {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-              </span>
+              </time>
             </div>
             <p className={`text-sm leading-relaxed ${
               isOwn ? "text-primary-foreground" : "text-foreground"
@@ -102,14 +112,15 @@ function CommentItem({ comment, productId, onReply, currentUserId }: CommentProp
               {comment.content}
             </p>
           </div>
-          
+
           <div className="flex items-center mt-2 space-x-4">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onReply(comment.id)}
+              onClick={handleReplyClick}
               className="text-xs text-muted-foreground hover:text-foreground p-1 h-auto"
               data-testid={`button-reply-${comment.id}`}
+              aria-label={`Reply to ${userName}'s comment`}
             >
               <FaReply className="w-3 h-3 mr-1" />
               Reply
@@ -119,10 +130,10 @@ function CommentItem({ comment, productId, onReply, currentUserId }: CommentProp
       </div>
 
       {/* Replies */}
-      {comment.replies && comment.replies.length > 0 && (
+      {hasReplies && (
         <div className="ml-11 space-y-3 border-l-2 border-muted pl-4">
           {comment.replies.map((reply) => (
-            <CommentItem
+            <MemoizedCommentItem
               key={reply.id}
               comment={reply}
               productId={productId}
@@ -134,7 +145,10 @@ function CommentItem({ comment, productId, onReply, currentUserId }: CommentProp
       )}
     </div>
   );
-}
+};
+
+// Memoized version to prevent unnecessary re-renders
+const MemoizedCommentItem = React.memo(CommentItem);
 
 export default function ProductCommentsModal({
   isOpen,
@@ -148,12 +162,20 @@ export default function ProductCommentsModal({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch comments
-  const { data: comments, isLoading } = useQuery<Comment[]>({
+  const { 
+    data: comments = [], 
+    isLoading, 
+    error 
+  } = useQuery<Comment[]>({
     queryKey: ["/api/products", product.id, "comments"],
     enabled: isOpen,
-    retry: false,
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
+      return failureCount < 2;
+    },
   });
 
   // Add comment mutation
@@ -194,7 +216,14 @@ export default function ProductCommentsModal({
     },
   });
 
-  const handleAddComment = () => {
+  // Calculate comment count with useMemo to prevent recalculations
+  const commentCount = useMemo(() => {
+    return comments.reduce((count, comment) => {
+      return count + 1 + (comment.replies?.length || 0);
+    }, 0);
+  }, [comments]);
+
+  const handleAddComment = useCallback(() => {
     if (!newComment.trim()) {
       toast({
         title: "Error",
@@ -204,14 +233,14 @@ export default function ProductCommentsModal({
       return;
     }
     addCommentMutation.mutate({ content: newComment.trim() });
-  };
+  }, [newComment, addCommentMutation, toast]);
 
-  const handleReply = (parentId: string) => {
+  const handleReply = useCallback((parentId: string) => {
     setReplyingTo(parentId);
     setTimeout(() => textareaRef.current?.focus(), 100);
-  };
+  }, []);
 
-  const handleSubmitReply = () => {
+  const handleSubmitReply = useCallback(() => {
     if (!replyContent.trim()) {
       toast({
         title: "Error",
@@ -224,32 +253,51 @@ export default function ProductCommentsModal({
       content: replyContent.trim(), 
       parentCommentId: replyingTo || undefined 
     });
-  };
+  }, [replyContent, replyingTo, addCommentMutation, toast]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setNewComment("");
     setReplyContent("");
     setReplyingTo(null);
     onClose();
-  };
+  }, [onClose]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea and scroll to bottom when new comments are added
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [replyContent]);
+  }, [replyContent, newComment]);
+
+  // Scroll to bottom when comments change
+  useEffect(() => {
+    if (commentsEndRef.current && !isLoading) {
+      commentsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [comments, isLoading]);
+
+  // Handle escape key to close reply
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && replyingTo) {
+        setReplyingTo(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [replyingTo]);
 
   if (!isOpen) return null;
 
-  const commentCount = comments?.reduce((count, comment) => {
-    return count + 1 + (comment.replies?.length || 0);
-  }, 0) || 0;
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0" data-testid="comments-modal">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] p-0" 
+        data-testid="comments-modal"
+        aria-describedby="comments-description"
+      >
         {/* Header */}
         <DialogHeader className="border-b p-4 pb-3">
           <div className="flex items-center justify-between">
@@ -260,16 +308,17 @@ export default function ProductCommentsModal({
                     src={product.imageUrls[0]}
                     alt={product.name}
                     className="w-full h-full object-cover rounded-lg"
+                    loading="lazy"
                   />
                 ) : (
-                  <FaComment className="text-primary" />
+                  <FaComment className="text-primary" aria-hidden="true" />
                 )}
               </div>
               <div>
                 <DialogTitle className="text-lg font-semibold" data-testid="comments-title">
                   {product.name}
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground" id="comments-description">
                   {commentCount} comment{commentCount !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -279,8 +328,9 @@ export default function ProductCommentsModal({
               size="sm"
               onClick={handleClose}
               data-testid="button-close-comments"
+              aria-label="Close comments"
             >
-              <FaTimes />
+              <FaTimes aria-hidden="true" />
             </Button>
           </div>
         </DialogHeader>
@@ -298,10 +348,18 @@ export default function ProductCommentsModal({
                 </div>
               ))}
             </div>
-          ) : comments && comments.length > 0 ? (
+          ) : error ? (
+            <div className="text-center py-12 text-destructive">
+              <FaTimes className="mx-auto text-4xl mb-3" aria-hidden="true" />
+              <h3 className="font-medium mb-1">Failed to load comments</h3>
+              <p className="text-sm">
+                Please try again later
+              </p>
+            </div>
+          ) : comments.length > 0 ? (
             <div className="space-y-6">
               {comments.map((comment) => (
-                <CommentItem
+                <MemoizedCommentItem
                   key={comment.id}
                   comment={comment}
                   productId={product.id}
@@ -309,10 +367,11 @@ export default function ProductCommentsModal({
                   currentUserId={user?.id}
                 />
               ))}
+              <div ref={commentsEndRef} />
             </div>
           ) : (
             <div className="text-center py-12">
-              <FaComment className="mx-auto text-4xl text-muted-foreground mb-3" />
+              <FaComment className="mx-auto text-4xl text-muted-foreground mb-3" aria-hidden="true" />
               <h3 className="font-medium mb-1">No comments yet</h3>
               <p className="text-sm text-muted-foreground">
                 Be the first to share your thoughts about this product!
@@ -333,15 +392,16 @@ export default function ProductCommentsModal({
                 size="sm"
                 onClick={() => setReplyingTo(null)}
                 className="h-auto p-1"
+                aria-label="Cancel reply"
               >
-                <FaTimes className="w-3 h-3" />
+                <FaTimes className="w-3 h-3" aria-hidden="true" />
               </Button>
             </div>
             <div className="flex space-x-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.profileImageUrl} />
+                <AvatarImage src={user?.profileImageUrl} alt="Your avatar" />
                 <AvatarFallback>
-                  <FaUser className="text-xs" />
+                  <FaUser className="text-xs" aria-hidden="true" />
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 flex space-x-2">
@@ -352,14 +412,20 @@ export default function ProductCommentsModal({
                   onChange={(e) => setReplyContent(e.target.value)}
                   className="min-h-[40px] max-h-[120px] resize-none border-muted"
                   data-testid="textarea-reply"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.metaKey) {
+                      handleSubmitReply();
+                    }
+                  }}
                 />
                 <Button
                   onClick={handleSubmitReply}
                   disabled={!replyContent.trim() || addCommentMutation.isPending}
                   size="sm"
                   data-testid="button-submit-reply"
+                  aria-label="Submit reply"
                 >
-                  <FaPaperPlane className="w-3 h-3" />
+                  <FaPaperPlane className="w-3 h-3" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -371,9 +437,9 @@ export default function ProductCommentsModal({
           <div className="border-t p-4">
             <div className="flex space-x-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.profileImageUrl} />
+                <AvatarImage src={user?.profileImageUrl} alt="Your avatar" />
                 <AvatarFallback>
-                  <FaUser className="text-xs" />
+                  <FaUser className="text-xs" aria-hidden="true" />
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-3">
@@ -383,6 +449,11 @@ export default function ProductCommentsModal({
                   onChange={(e) => setNewComment(e.target.value)}
                   className="min-h-[60px] resize-none"
                   data-testid="textarea-comment"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.metaKey) {
+                      handleAddComment();
+                    }
+                  }}
                 />
                 <div className="flex justify-end">
                   <Button
@@ -394,7 +465,7 @@ export default function ProductCommentsModal({
                       "Posting..."
                     ) : (
                       <>
-                        <FaPaperPlane className="w-3 h-3 mr-2" />
+                        <FaPaperPlane className="w-3 h-3 mr-2" aria-hidden="true" />
                         Comment
                       </>
                     )}
