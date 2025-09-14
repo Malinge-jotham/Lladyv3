@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -12,45 +12,68 @@ interface ChatAreaProps {
   userId: string;
 }
 
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  profileImageUrl?: string;
+}
+
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  receiverId: string;
+  createdAt: string;
+}
+
+interface WebSocketMessage {
+  type: "message" | "typing";
+  message?: Message;
+  userId?: string;
+  targetUserId?: string;
+  isTyping?: boolean;
+}
+
 export default function ChatArea({ userId }: ChatAreaProps) {
   const [messageText, setMessageText] = useState("");
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: messages, isLoading } = useQuery({
+  const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages", userId],
     retry: false,
   });
 
-  const { data: otherUser } = useQuery({
+  const { data: otherUser } = useQuery<User>({
     queryKey: ["/api/users", userId],
     retry: false,
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (messageData: any) => {
+    mutationFn: async (messageData: { receiverId: string; content: string }) => {
       const response = await apiRequest("POST", "/api/messages", messageData);
       return response.json();
     },
-    onSuccess: (newMessage) => {
+    onSuccess: (newMessage: Message) => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       setMessageText("");
 
       // Send via WebSocket for real-time updates
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
           type: "message",
           message: newMessage,
         }));
       }
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -59,27 +82,31 @@ export default function ChatArea({ userId }: ChatAreaProps) {
     },
   });
 
-  // WebSocket connection
+  // WebSocket connection with proper cleanup
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     const ws = new WebSocket(wsUrl);
 
+    socketRef.current = ws;
+
     ws.onopen = () => {
       console.log("WebSocket connected");
-      setSocket(ws);
     };
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "message") {
+        const data: WebSocketMessage = JSON.parse(event.data);
+
+        if (data.type === "message" && data.message) {
           // Only refresh if the message is relevant to current conversation
           if (data.message.senderId === userId || data.message.receiverId === userId) {
             queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
           }
           // Always refresh conversations list for new message notifications
           queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+        } else if (data.type === "typing" && data.userId === userId) {
+          setIsTyping(data.isTyping || false);
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -88,67 +115,70 @@ export default function ChatArea({ userId }: ChatAreaProps) {
 
     ws.onclose = () => {
       console.log("WebSocket disconnected");
-      setSocket(null);
     };
 
     ws.onerror = (error) => {
       console.error("WebSocket error:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to chat server",
+        variant: "destructive",
+      });
     };
 
     return () => {
       ws.close();
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, toast]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (messages && Array.isArray(messages) && messages.length > 0) {
-      scrollToBottom();
-    }
+    scrollToBottom();
   }, [messages]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
-  // Handle typing indicator
-  const handleTyping = () => {
+  // Handle typing indicator with proper cleanup
+  const handleTyping = useCallback(() => {
+    if (!socketRef.current) return;
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Send typing start if not already typing
     if (!isTyping) {
       setIsTyping(true);
-      // Send typing indicator to other user via WebSocket
-      if (socket) {
-        socket.send(JSON.stringify({
-          type: "typing",
-          userId: (currentUser as any)?.id,
-          targetUserId: userId,
-          isTyping: true
-        }));
-      }
+      socketRef.current.send(JSON.stringify({
+        type: "typing",
+        userId: currentUser?.id,
+        targetUserId: userId,
+        isTyping: true
+      }));
     }
 
-    if (typingTimeout) {
-      clearTimeout(typingTimeout);
-    }
-
-    const timeout = setTimeout(() => {
+    // Set timeout to stop typing indicator
+    typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      if (socket) {
-        socket.send(JSON.stringify({
-          type: "typing",
-          userId: (currentUser as any)?.id,
-          targetUserId: userId,
-          isTyping: false
-        }));
-      }
+      socketRef.current?.send(JSON.stringify({
+        type: "typing",
+        userId: currentUser?.id,
+        targetUserId: userId,
+        isTyping: false
+      }));
     }, 1000);
-
-    setTypingTimeout(timeout);
-  };
+  }, [isTyping, userId, currentUser?.id]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !currentUser?.id) return;
 
     sendMessageMutation.mutate({
       receiverId: userId,
@@ -162,6 +192,11 @@ export default function ChatArea({ userId }: ChatAreaProps) {
       minute: '2-digit' 
     });
   };
+
+  // Sort messages by timestamp to ensure correct order
+  const sortedMessages = [...messages].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 
   if (isLoading) {
     return (
@@ -186,7 +221,7 @@ export default function ChatArea({ userId }: ChatAreaProps) {
     <div className="flex-1 flex flex-col bg-gray-50" data-testid="chat-area">
       {/* Chat Header */}
       <div className="p-6 border-b border-gray-300 bg-white shadow-sm" data-testid="chat-header">
-        {(otherUser as any) ? (
+        {otherUser ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
@@ -199,16 +234,16 @@ export default function ChatArea({ userId }: ChatAreaProps) {
               </Button>
 
               <div className="relative">
-                {(otherUser as any).profileImageUrl ? (
+                {otherUser.profileImageUrl ? (
                   <img
-                    src={(otherUser as any).profileImageUrl}
+                    src={otherUser.profileImageUrl}
                     alt="User avatar"
                     className="w-12 h-12 rounded-full object-cover shadow-md"
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center shadow-md">
                     <span className="text-white font-bold text-lg">
-                      {(otherUser as any)?.firstName?.[0] || '?'}
+                      {otherUser?.firstName?.[0] || '?'}
                     </span>
                   </div>
                 )}
@@ -217,9 +252,11 @@ export default function ChatArea({ userId }: ChatAreaProps) {
 
               <div>
                 <h3 className="font-bold text-gray-900 text-lg" data-testid="chat-user-name">
-                  {(otherUser as any)?.firstName} {(otherUser as any)?.lastName}
+                  {otherUser.firstName} {otherUser.lastName}
                 </h3>
-                <p className="text-sm text-green-600 font-medium">Online</p>
+                <p className="text-sm text-green-600 font-medium">
+                  {isTyping ? "Typing..." : "Online"}
+                </p>
               </div>
             </div>
 
@@ -253,10 +290,10 @@ export default function ChatArea({ userId }: ChatAreaProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-100" data-testid="chat-messages">
-        {messages && Array.isArray(messages) && messages.length > 0 ? (
-          messages.map((message: any, index: number) => {
-            const isOwnMessage = message.senderId === (currentUser as any)?.id;
-            const nextMessage = messages[index + 1];
+        {sortedMessages.length > 0 ? (
+          sortedMessages.map((message, index) => {
+            const isOwnMessage = message.senderId === currentUser?.id;
+            const nextMessage = sortedMessages[index + 1];
             const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
 
             return (
@@ -302,7 +339,6 @@ export default function ChatArea({ userId }: ChatAreaProps) {
       <div className="p-6 border-t border-gray-300 bg-white" data-testid="message-input-area">
         <form onSubmit={handleSendMessage}>
           <div className="flex items-center space-x-4 bg-gray-100 rounded-full p-2 shadow-sm">
-            {/* Attachment Button */}
             <Button
               type="button"
               variant="ghost"
@@ -313,7 +349,6 @@ export default function ChatArea({ userId }: ChatAreaProps) {
               <FaPaperclip className="w-5 h-5" />
             </Button>
 
-            {/* Message Input Field */}
             <div className="flex-1 relative">
               <Input
                 value={messageText}
@@ -328,7 +363,6 @@ export default function ChatArea({ userId }: ChatAreaProps) {
               />
             </div>
 
-            {/* Emoji Button */}
             <Button
               type="button"
               variant="ghost"
@@ -339,7 +373,6 @@ export default function ChatArea({ userId }: ChatAreaProps) {
               <FaSmile className="w-5 h-5" />
             </Button>
 
-            {/* Send Button */}
             <Button
               type="submit"
               disabled={sendMessageMutation.isPending || !messageText.trim()}

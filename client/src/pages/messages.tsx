@@ -10,7 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { FaPlus, FaSearch, FaComment, FaExclamationTriangle } from "react-icons/fa";
+import { 
+  FaPlus, 
+  FaSearch, 
+  FaComment, 
+  FaExclamationTriangle, 
+  FaPaperPlane,
+  FaUsers,
+  FaEllipsisV
+} from "react-icons/fa";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Messages() {
   const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
@@ -132,9 +141,12 @@ export default function Messages() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="relative">
+            <Skeleton className="h-16 w-16 rounded-full" />
+            <Skeleton className="h-4 w-4 rounded-full absolute bottom-0 right-0 bg-green-500" />
+          </div>
           <Skeleton className="h-4 w-32" />
         </div>
       </div>
@@ -158,20 +170,32 @@ export default function Messages() {
       <div className="flex-1 ml-64">
         <div className="flex h-screen">
           {/* Conversations List */}
-          <div className="w-96 border-r bg-muted/40 shadow-sm" data-testid="conversations-list">
+          <div className="w-96 border-r bg-card shadow-sm flex flex-col" data-testid="conversations-list">
             {/* Header with title and new chat button */}
-            <div className="p-6 border-b bg-card">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-foreground">Messages</h2>
-                <Button
-                  size="icon"
-                  onClick={() => setShowStartConversation(true)}
-                  className="rounded-full h-10 w-10 shadow-sm"
-                  data-testid="button-start-conversation"
-                  aria-label="Start new conversation"
-                >
-                  <FaPlus className="w-4 h-4" />
-                </Button>
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <FaComment className="text-primary" />
+                  Messages
+                </h2>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full h-10 w-10"
+                  >
+                    <FaUsers className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    onClick={() => setShowStartConversation(true)}
+                    className="rounded-full h-10 w-10"
+                    data-testid="button-start-conversation"
+                    aria-label="Start new conversation"
+                  >
+                    <FaPlus className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Search Bar */}
@@ -181,7 +205,7 @@ export default function Messages() {
                   placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 py-2 rounded-lg bg-background"
+                  className="pl-10 py-2 rounded-full bg-muted/50 border-0 focus-visible:ring-2"
                   data-testid="input-search-conversations"
                   aria-label="Search conversations"
                 />
@@ -189,11 +213,11 @@ export default function Messages() {
             </div>
 
             {/* Conversations List */}
-            <div className="overflow-y-auto h-[calc(100vh-136px)]">
+            <div className="flex-1 overflow-y-auto">
               {isLoading ? (
                 <div className="space-y-2 p-4">
                   {[...Array(5)].map((_, i) => (
-                    <div key={i} className="p-3 flex items-center space-x-3 bg-card rounded-lg">
+                    <div key={i} className="p-3 flex items-center space-x-3 rounded-lg">
                       <Skeleton className="w-12 h-12 rounded-full" />
                       <div className="space-y-2 flex-1">
                         <Skeleton className="h-4 w-32" />
@@ -203,8 +227,10 @@ export default function Messages() {
                   ))}
                 </div>
               ) : error ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <FaExclamationTriangle className="w-12 h-12 text-destructive mb-4" />
+                <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                  <div className="rounded-full bg-destructive/10 p-4 mb-4">
+                    <FaExclamationTriangle className="w-8 h-8 text-destructive" />
+                  </div>
                   <h3 className="text-lg font-medium mb-2">Failed to load conversations</h3>
                   <p className="text-muted-foreground mb-4">There was a problem loading your messages</p>
                   <Button onClick={() => refetch()} variant="outline">
@@ -220,10 +246,10 @@ export default function Messages() {
                     return (
                       <div
                         key={conversation.userId}
-                        className={`p-3 transition-all duration-200 cursor-pointer rounded-lg ${
+                        className={`p-3 transition-all duration-200 cursor-pointer rounded-xl ${
                           selectedUserId === conversation.userId 
                             ? 'bg-primary/10 border-l-4 border-l-primary' 
-                            : 'bg-card hover:bg-accent border-l-4 border-l-transparent'
+                            : 'hover:bg-accent/50 border-l-4 border-l-transparent'
                         }`}
                         onClick={() => handleSelectConversation(conversation.userId)}
                         data-testid={`conversation-${conversation.userId}`}
@@ -236,22 +262,21 @@ export default function Messages() {
                         }}
                         aria-label={`Conversation with ${conversation.user?.firstName} ${conversation.user?.lastName}. ${unreadCount} unread messages`}
                       >
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center gap-3">
                           <div className="relative flex-shrink-0">
-                            {conversation.user?.profileImageUrl ? (
-                              <img
-                                src={conversation.user.profileImageUrl}
-                                alt={`${conversation.user.firstName} ${conversation.user.lastName}`}
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                                <span className="text-white font-medium text-sm">
+                            <Avatar className="w-12 h-12">
+                              {conversation.user?.profileImageUrl ? (
+                                <AvatarImage
+                                  src={conversation.user.profileImageUrl}
+                                  alt={`${conversation.user.firstName} ${conversation.user.lastName}`}
+                                />
+                              ) : (
+                                <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white">
                                   {conversation.user?.firstName?.[0] || 'U'}
                                   {conversation.user?.lastName?.[0] || ''}
-                                </span>
-                              </div>
-                            )}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
                             {/* Online status indicator */}
                             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
                           </div>
@@ -259,14 +284,14 @@ export default function Messages() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center">
+                                <div className="flex items-center gap-2">
                                   <p className="font-medium text-foreground truncate text-sm" data-testid={`conversation-name-${conversation.userId}`}>
                                     {conversation.user?.firstName} {conversation.user?.lastName}
                                   </p>
                                   {unreadCount > 0 && (
                                     <Badge 
                                       variant="destructive" 
-                                      className="ml-2 h-5 min-w-[20px] flex items-center justify-center px-1 rounded-full text-xs"
+                                      className="h-5 min-w-[20px] flex items-center justify-center px-1 rounded-full text-xs"
                                     >
                                       {unreadCount > 99 ? '99+' : unreadCount}
                                     </Badge>
@@ -287,6 +312,9 @@ export default function Messages() {
                                     : ''
                                   }
                                 </span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
+                                  <FaEllipsisV className="w-3 h-3" />
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -296,24 +324,28 @@ export default function Messages() {
                   })}
                 </div>
               ) : searchQuery ? (
-                <div className="p-8 text-center text-muted-foreground" data-testid="no-search-results">
-                  <p>No conversations found for "{searchQuery}"</p>
+                <div className="p-8 text-center text-muted-foreground h-full flex flex-col items-center justify-center" data-testid="no-search-results">
+                  <div className="rounded-full bg-muted p-4 mb-4">
+                    <FaSearch className="w-8 h-8" />
+                  </div>
+                  <p className="mb-2">No conversations found for "{searchQuery}"</p>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => setSearchQuery('')}
-                    className="mt-2"
                   >
                     Clear search
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-8 text-center" data-testid="empty-conversations">
-                  <FaComment className="w-12 h-12 text-muted-foreground/60 mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-1">No conversations yet</h3>
-                  <p className="text-muted-foreground mb-4">Start a conversation with other users!</p>
+                <div className="flex flex-col items-center justify-center p-8 text-center h-full" data-testid="empty-conversations">
+                  <div className="rounded-full bg-primary/10 p-5 mb-6">
+                    <FaPaperPlane className="w-10 h-10 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-medium text-foreground mb-2">No conversations yet</h3>
+                  <p className="text-muted-foreground mb-6 max-w-xs">Start a conversation with other users on the platform</p>
                   <Button onClick={() => setShowStartConversation(true)}>
-                    Start Chatting
+                    Start Your First Conversation
                   </Button>
                 </div>
               )}
@@ -335,14 +367,14 @@ export default function Messages() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-background" data-testid="no-chat-selected">
               <div className="text-center max-w-md mx-4">
-                <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mb-6 mx-auto">
-                  <FaComment className="w-8 h-8 text-muted-foreground/70" />
+                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+                  <FaComment className="w-10 h-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-3">Select a conversation</h3>
+                <h3 className="text-2xl font-semibold text-foreground mb-4">Select a conversation</h3>
                 <p className="text-muted-foreground mb-6">
-                  Choose a conversation from the list to view messages or start a new conversation
+                  Choose a conversation from the list to view messages or start a new conversation to connect with others
                 </p>
-                <Button onClick={() => setShowStartConversation(true)}>
+                <Button onClick={() => setShowStartConversation(true)} size="lg">
                   Start New Conversation
                 </Button>
               </div>
