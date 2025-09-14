@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,12 +6,25 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FaHeart, FaRegHeart, FaComment, FaRetweet, FaBookmark, FaShoppingCart } from "react-icons/fa";
 
+// Define currency symbols mapping
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  NGN: "₦",
+  GHS: "₵",
+  KES: "KSh",
+  ZAR: "R",
+  EGP: "£",
+  XOF: "CFA",
+};
+
 interface ProductPostProps {
   product: {
     id: string;
     name: string;
     description: string;
     price: string;
+    currency?: string; // Add currency field
     imageUrls?: string[];
     likes?: number;
     comments?: number;
@@ -33,6 +45,11 @@ export default function ProductPost({ product }: ProductPostProps) {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Get currency symbol - default to $ if not specified
+  const currencySymbol = product.currency 
+    ? CURRENCY_SYMBOLS[product.currency] || "$" 
+    : "$";
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -156,7 +173,7 @@ export default function ProductPost({ product }: ProductPostProps) {
                   {product.name}
                 </h4>
                 <span className="text-xl font-bold text-primary" data-testid={`product-price-${product.id}`}>
-                  ${product.price}
+                  {currencySymbol}{product.price}
                 </span>
               </div>
               <Button

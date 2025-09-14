@@ -13,7 +13,10 @@ export default function Landing() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: ''
+    password: '',
+    firstName: '',
+    lastName: '',
+    username: ''
   });
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -39,13 +42,51 @@ export default function Landing() {
     checkAuthStatus();
   }, []);
 
+  // Handle OAuth callback after redirect
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthSuccess = urlParams.get('oauth_success');
+      const error = urlParams.get('error');
+
+      if (oauthSuccess === 'true') {
+        // OAuth was successful, check authentication status
+        try {
+          const response = await fetch('/api/auth/status', {
+            credentials: 'include'
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+            setIsAuthenticated(true);
+            setMessage({ type: 'success', text: 'Authentication successful!' });
+
+            // Redirect to dashboard after a brief delay
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 1500);
+          }
+        } catch (error) {
+          console.error('Error checking auth status after OAuth:', error);
+        }
+      } else if (error) {
+        setMessage({ type: 'error', text: `OAuth failed: ${error}` });
+      }
+    };
+
+    handleOAuthCallback();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = "/api/login";
+    // Store current location to redirect back after OAuth
+    localStorage.setItem('preOAuthRoute', window.location.pathname);
+    window.location.href = "/api/auth/google";
   };
 
   const handleEmailAuth = async (e) => {
@@ -54,13 +95,27 @@ export default function Landing() {
     setMessage({ type: '', text: '' });
 
     try {
+      // For registration, split the name into firstName and lastName
+      let requestData = { ...formData };
+
+      if (!isLogin && formData.name) {
+        const nameParts = formData.name.split(' ');
+        requestData.firstName = nameParts[0] || '';
+        requestData.lastName = nameParts.slice(1).join(' ') || '';
+
+        // Generate a username if not provided
+        if (!requestData.username) {
+          requestData.username = requestData.email.split('@')[0] + Math.floor(Math.random() * 1000);
+        }
+      }
+
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(requestData),
         credentials: 'include'
       });
 

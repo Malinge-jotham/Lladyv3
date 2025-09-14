@@ -97,11 +97,10 @@ export default function Home() {
     <div className="flex min-h-screen">
       <Sidebar />
 
-      {/* Main Content */}
-      <div className="flex-1 ml-64 mr-80"> {/* Adjusted margins to account for fixed sidebars */}
-        <div className="flex justify-center"> {/* Center the content */}
-          {/* Center Feed */}
-          <div className="w-full max-w-2xl border-x border-border min-h-screen">
+      {/* Main content area with adjusted margins */}
+      <div className="flex-1 ml-20 mr-64">
+        <div className="flex justify-center">
+          <div className="w-full max-w-2xl border-x border-gray-200 min-h-screen bg-white">
             {/* Header */}
             <div className="sticky top-0 bg-card/80 backdrop-blur-sm border-b border-border p-4" data-testid="feed-header">
               <div className="flex justify-between items-center">
