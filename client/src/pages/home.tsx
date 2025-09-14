@@ -5,46 +5,89 @@ import RightSidebar from "@/components/layout/RightSidebar";
 import ProductPost from "@/components/product/ProductPost";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+
+// Define TypeScript interface for Product
+interface Product {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  price: number;
+  // Add other properties as needed
+}
 
 export default function Home() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const {
     data: products,
     isLoading: productsLoading,
-    error
-  } = useQuery({
+    error,
+    refetch,
+  } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     retry: false,
+    enabled: isAuthenticated, // Only fetch if authenticated
   });
 
   useEffect(() => {
     if (authLoading) return;
 
-    // Handle both auth error and API error cases
-    if (!isAuthenticated || (error && isUnauthorizedError(error as Error))) {
+    if (!isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Authentication required",
+        description: "You need to log in to view this content",
         variant: "destructive",
       });
-
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
+      setShouldRedirect(true);
+    } else if (error) {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again",
+          variant: "destructive",
+        });
+        setShouldRedirect(true);
+      } else {
+        toast({
+          title: "Error loading products",
+          description: "Please try again later",
+          variant: "destructive",
+        });
+      }
     }
-  }, [isAuthenticated, authLoading, error, toast]);
+
+    if (shouldRedirect) {
+      const timer = setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, authLoading, error, toast, shouldRedirect]);
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Skeleton className="h-12 w-12 rounded-full mx-auto" />
+          <Skeleton className="h-6 w-48 mx-auto" />
+          <Skeleton className="h-4 w-32 mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || shouldRedirect) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Skeleton className="h-8 w-32 mx-auto mb-4" />
-          <Skeleton className="h-4 w-48 mx-auto" />
+          <h2 className="text-xl font-semibold mb-2">Redirecting to login...</h2>
+          <p>Please wait while we redirect you to the login page.</p>
         </div>
       </div>
     );
@@ -55,13 +98,23 @@ export default function Home() {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 ml-64">
-        <div className="flex">
+      <div className="flex-1 ml-64 mr-80"> {/* Adjusted margins to account for fixed sidebars */}
+        <div className="flex justify-center"> {/* Center the content */}
           {/* Center Feed */}
-          <div className="flex-1 max-w-2xl mx-auto border-x border-border min-h-screen">
+          <div className="w-full max-w-2xl border-x border-border min-h-screen">
             {/* Header */}
             <div className="sticky top-0 bg-card/80 backdrop-blur-sm border-b border-border p-4" data-testid="feed-header">
-              <h2 className="text-xl font-bold">Home</h2>
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Home</h2>
+                {error && !isUnauthorizedError(error as Error) && (
+                  <button 
+                    onClick={() => refetch()}
+                    className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Product Posts Feed */}
@@ -84,21 +137,26 @@ export default function Home() {
                     </Card>
                   ))}
                 </div>
-              ) : products && Array.isArray(products) && products.length > 0 ? (
-                products.map((product: any) => (
+              ) : error && isUnauthorizedError(error as Error) ? (
+                <div className="p-12 text-center">
+                  <p className="text-destructive">Your session has expired. Redirecting to login...</p>
+                </div>
+              ) : products && products.length > 0 ? (
+                products.map((product) => (
                   <ProductPost key={product.id} product={product} />
                 ))
               ) : (
                 <div className="p-12 text-center text-muted-foreground" data-testid="empty-feed">
-                  <p>No products found. Start following users or explore trending products!</p>
+                  <p className="mb-4">No products found.</p>
+                  <p>Start following users or explore trending products!</p>
                 </div>
               )}
             </div>
           </div>
-
-          <RightSidebar />
         </div>
       </div>
+
+      <RightSidebar />
     </div>
   );
 }

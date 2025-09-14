@@ -19,112 +19,121 @@ export default function RightSidebar() {
   ];
 
   return (
-    <div className="w-80 p-4 space-y-6" data-testid="right-sidebar">
-      {/* Search */}
-      <div className="bg-muted rounded-full p-3" data-testid="search-container">
-        <div className="flex items-center space-x-3">
-          <FaSearch className="text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search products and vrooms..."
-            className="bg-transparent outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            data-testid="input-search"
-          />
+    <div className="fixed right-0 top-0 h-screen w-80 bg-white p-4 flex flex-col" data-testid="right-sidebar">
+      <div className="flex-1 overflow-y-auto">
+        {/* Search */}
+        <div className="bg-muted rounded-full p-3 mb-6" data-testid="search-container">
+          <div className="flex items-center space-x-3">
+            <FaSearch className="text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search products and vrooms..."
+              className="bg-transparent outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              data-testid="input-search"
+            />
+          </div>
         </div>
+
+        {/* Trending Products/Hashtags */}
+        <Card className="mb-6" data-testid="trending-hashtags-card">
+          <div className="p-4 border-b border-border">
+            <h3 className="text-lg font-semibold">Trending Products</h3>
+          </div>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {trendingHashtags.map((item, index) => (
+                <div
+                  key={item.tag}
+                  className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+                  data-testid={`trending-hashtag-${index}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{item.tag}</p>
+                      <p className="text-sm text-muted-foreground">{item.count}</p>
+                    </div>
+                    <FaChartLine className="text-accent" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Popular Vrooms */}
+        <Card className="mb-6" data-testid="popular-vrooms-card">
+          <div className="p-4 border-b border-border">
+            <h3 className="text-lg font-semibold">Popular Vrooms</h3>
+          </div>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {vroomsLoading ? (
+                <div className="space-y-4 p-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-3">
+                      <Skeleton className="w-10 h-10 rounded-lg" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-3 w-3/4" />
+                      </div>
+                      <Skeleton className="h-6 w-12" />
+                    </div>
+                  ))}
+                </div>
+              ) : trendingVrooms && Array.isArray(trendingVrooms) && trendingVrooms.length > 0 ? (
+                trendingVrooms.slice(0, 3).map((vroom: any, index: number) => (
+                  <div
+                    key={vroom.id}
+                    className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+                    data-testid={`popular-vroom-${index}`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      {vroom.coverImageUrl ? (
+                        <img
+                          src={vroom.coverImageUrl}
+                          alt={vroom.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                          <FaStore className="text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium" data-testid={`vroom-name-${index}`}>
+                          {vroom.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground" data-testid={`vroom-product-count-${index}`}>
+                          {Math.floor(Math.random() * 200) + 50} products
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-primary hover:text-primary/80"
+                        data-testid={`button-follow-vroom-${index}`}
+                      >
+                        Follow
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-muted-foreground" data-testid="empty-popular-vrooms">
+                  <p>No popular vrooms found.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Trending Products/Hashtags */}
-      <Card data-testid="trending-hashtags-card">
-        <div className="p-4 border-b border-border">
-          <h3 className="text-lg font-semibold">Trending Products</h3>
-        </div>
-        <CardContent className="p-0">
-          <div className="divide-y divide-border">
-            {trendingHashtags.map((item, index) => (
-              <div
-                key={item.tag}
-                className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-                data-testid={`trending-hashtag-${index}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{item.tag}</p>
-                    <p className="text-sm text-muted-foreground">{item.count}</p>
-                  </div>
-                  <FaChartLine className="text-accent" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Popular Vrooms */}
-      <Card data-testid="popular-vrooms-card">
-        <div className="p-4 border-b border-border">
-          <h3 className="text-lg font-semibold">Popular Vrooms</h3>
-        </div>
-        <CardContent className="p-0">
-          <div className="divide-y divide-border">
-            {vroomsLoading ? (
-              <div className="space-y-4 p-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-3">
-                    <Skeleton className="w-10 h-10 rounded-lg" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-1/2" />
-                      <Skeleton className="h-3 w-3/4" />
-                    </div>
-                    <Skeleton className="h-6 w-12" />
-                  </div>
-                ))}
-              </div>
-            ) : trendingVrooms && Array.isArray(trendingVrooms) && trendingVrooms.length > 0 ? (
-              trendingVrooms.slice(0, 3).map((vroom: any, index: number) => (
-                <div
-                  key={vroom.id}
-                  className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-                  data-testid={`popular-vroom-${index}`}
-                >
-                  <div className="flex items-center space-x-3">
-                    {vroom.coverImageUrl ? (
-                      <img
-                        src={vroom.coverImageUrl}
-                        alt={vroom.name}
-                        className="w-10 h-10 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                        <FaStore className="text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="font-medium" data-testid={`vroom-name-${index}`}>
-                        {vroom.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground" data-testid={`vroom-product-count-${index}`}>
-                        {Math.floor(Math.random() * 200) + 50} products
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-primary hover:text-primary/80"
-                      data-testid={`button-follow-vroom-${index}`}
-                    >
-                      Follow
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-muted-foreground" data-testid="empty-popular-vrooms">
-                <p>No popular vrooms found.</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Footer */}
+      <div className="py-4 border-t border-border mt-auto">
+        <p className="text-xs text-muted-foreground text-center">
+          © {new Date().getFullYear()} Eldady Mart. All Rights Reserved.
+        </p>
+      </div>
     </div>
   );
 }

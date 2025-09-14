@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 import MessageSellerButton from "@/components/product/MessageSellerButton";
-import { FaHeart, FaShoppingCart, FaShare, FaStore, FaComment } from "react-icons/fa";
+import { FaHeart, FaShoppingCart, FaShare, FaStore, FaComment, FaEdit } from "react-icons/fa";
 import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 
 interface ProductCardProps {
@@ -68,6 +68,11 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
     setShowCommentsModal(true);
   };
 
+  const handleEditProduct = () => {
+    // Navigate to edit product page
+    window.location.href = `/product/edit/${product.id}`;
+  };
+
   const mainImage = product.imageUrls && product.imageUrls.length > 0 
     ? product.imageUrls[0] 
     : "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300";
@@ -75,9 +80,12 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
   // Convert price to string if it's a number
   const displayPrice = typeof product.price === 'number' ? product.price.toFixed(2) : product.price;
 
+  // Check if current user is the product owner
+  const isProductOwner = user?.id === (product.userId || product.user?.id);
+
   return (
     <>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`product-card-${product.id}`}>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col" data-testid={`product-card-${product.id}`}>
         <div className="relative">
           <img
             src={mainImage}
@@ -101,13 +109,30 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
               <FaStore className="w-3 h-3" />
             </Button>
           )}
+
+          {/* Edit button for product owner */}
+          {isProductOwner && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleEditProduct();
+              }}
+              data-testid={`button-edit-${product.id}`}
+            >
+              <FaEdit className="w-3 h-3" />
+            </Button>
+          )}
         </div>
 
-        <CardContent className="p-4">
-          <h3 className="font-semibold mb-2" data-testid={`product-name-${product.id}`}>
+        <CardContent className="p-4 flex flex-col flex-grow">
+          <h3 className="font-semibold mb-2 line-clamp-2 h-10" data-testid={`product-name-${product.id}`}>
             {product.name}
           </h3>
-          <p className="text-muted-foreground text-sm mb-3 line-clamp-2" data-testid={`product-description-${product.id}`}>
+          <p className="text-muted-foreground text-sm mb-3 line-clamp-3 flex-grow" data-testid={`product-description-${product.id}`}>
             {product.description}
           </p>
 
@@ -124,7 +149,7 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
           </div>
 
           {product.user && (
-            <p className="text-xs text-muted-foreground mb-3">
+            <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
               by {product.user.firstName} {product.user.lastName}
             </p>
           )}
@@ -132,38 +157,36 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
           <div className="flex gap-2 mb-2">
             <Button 
               onClick={handleAddToCart}
-              className="flex-1"
+              className="flex-1 p-2"
               data-testid={`button-add-to-cart-${product.id}`}
+              title="Add to Cart"
             >
-              <FaShoppingCart className="w-4 h-4 mr-2" />
-              Add to Cart
+              <FaShoppingCart className="w-4 h-4" />
             </Button>
 
             <Button 
               onClick={handleShare}
               variant="outline"
-              className="flex-1"
+              className="flex-1 p-2"
               data-testid={`button-share-${product.id}`}
+              title="Share"
             >
-              <FaShare className="w-4 h-4 mr-2" />
-              Share
+              <FaShare className="w-4 h-4" />
+            </Button>
+
+            <Button
+              onClick={handleShowComments}
+              variant="outline"
+              className="flex-1 p-2"
+              data-testid={`button-comments-${product.id}`}
+              title="Comments"
+            >
+              <FaComment className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Comment button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleShowComments}
-            className="w-full text-muted-foreground hover:text-foreground"
-            data-testid={`button-comments-${product.id}`}
-          >
-            <FaComment className="w-3 h-3 mr-2" />
-            Comments
-          </Button>
-
-          {/* Message Seller Button */}
-          {isAuthenticated && (product.userId || product.user?.id) && (
+          {/* Message Seller Button - Keep text as requested */}
+          {isAuthenticated && (product.userId || product.user?.id) && !isProductOwner && (
             <div className="mt-2">
               <MessageSellerButton
                 sellerId={product.userId || product.user?.id || ''}
@@ -179,11 +202,11 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
               variant="ghost"
               size="sm"
               onClick={handleAddToVroom}
-              className="w-full mt-2 text-muted-foreground hover:text-foreground"
+              className="w-full mt-2 text-muted-foreground hover:text-foreground p-2"
               data-testid={`button-add-to-vroom-bottom-${product.id}`}
+              title="Add to Vroom"
             >
-              <FaStore className="w-3 h-3 mr-2" />
-              Add to Vroom
+              <FaStore className="w-3 h-3" />
             </Button>
           )}
         </CardContent>

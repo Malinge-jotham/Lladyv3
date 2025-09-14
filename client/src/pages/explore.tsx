@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +23,10 @@ import {
   FaShoppingBag,
   FaHeart,
   FaStar,
-  FaFilter
+  FaFilter,
+  FaChevronUp,
+  FaSort,
+  FaList
 } from "react-icons/fa";
 
 type SearchType = 'all' | 'products' | 'users' | 'vrooms';
@@ -58,6 +61,37 @@ export default function Explore() {
   const [sortBy, setSortBy] = useState<SortBy>('recent');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [activeSearchQuery, setActiveSearchQuery] = useState("");
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Calculate header height once it's rendered
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, []);
+
+  // Scroll handling for header visibility
+  useEffect(() {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down
+        setIsHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY || currentScrollY <= 100) {
+        // Scrolling up or at top
+        setIsHeaderVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   // Auth effect
   useEffect(() => {
@@ -147,6 +181,10 @@ export default function Explore() {
     }
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -158,14 +196,20 @@ export default function Explore() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      
-      {/* Main Content */}
-      <div className="flex-1 ml-64">
+
+      {/* Main Content - Adjusted to use full available width */}
+      <div className="flex-1 ml-16 lg:ml-64 mr-16 lg:mr-80"> {/* Responsive margins */}
         <div className="flex">
-          {/* Center Content */}
-          <div className="flex-1 max-w-4xl mx-auto border-x border-border min-h-screen">
-            {/* Header */}
-            <div className="sticky top-0 bg-card/80 backdrop-blur-sm border-b border-border p-4" data-testid="explore-header">
+          {/* Center Content - Now uses full width between sidebars */}
+          <div className="flex-1 w-full border-x border-border min-h-screen">
+            {/* Header with scroll behavior */}
+            <div 
+              ref={headerRef}
+              className={`sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border p-4 transition-transform duration-300 z-10 ${
+                isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+              }`}
+              data-testid="explore-header"
+            >
               <div className="flex items-center gap-3 mb-4">
                 <FaCompass className="text-primary text-xl" />
                 <h2 className="text-xl font-bold">Explore</h2>
@@ -189,11 +233,16 @@ export default function Explore() {
                 </Button>
               </div>
 
-              {/* Search Filters */}
+              {/* Search Filters - Icons only */}
               <div className="flex gap-2 flex-wrap">
                 <Select value={searchType} onValueChange={(value: SearchType) => setSearchType(value)}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
+                  <SelectTrigger className="w-12 md:w-32">
+                    <div className="hidden md:block">
+                      <SelectValue />
+                    </div>
+                    <div className="md:hidden">
+                      <FaList className="w-4 h-4" />
+                    </div>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
@@ -204,8 +253,13 @@ export default function Explore() {
                 </Select>
 
                 <Select value={sortBy} onValueChange={(value: SortBy) => setSortBy(value)}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue />
+                  <SelectTrigger className="w-12 md:w-36">
+                    <div className="hidden md:block">
+                      <SelectValue />
+                    </div>
+                    <div className="md:hidden">
+                      <FaSort className="w-4 h-4" />
+                    </div>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="recent">Most Recent</SelectItem>
@@ -223,13 +277,13 @@ export default function Explore() {
             <div className="p-4 border-b border-border">
               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <FaFilter className="text-primary" />
-                Categories
+                <span className="hidden sm:inline">Categories</span>
               </h3>
               <div className="flex gap-2 flex-wrap">
                 {categories.map((category) => {
                   const Icon = category.icon;
                   const isSelected = selectedCategory === category.id;
-                  
+
                   return (
                     <Button
                       key={category.id}
@@ -240,7 +294,8 @@ export default function Explore() {
                       data-testid={`category-${category.id}`}
                     >
                       <Icon className="w-4 h-4" />
-                      {category.name}
+                      <span className="hidden sm:inline">{category.name}</span>
+                      <span className="sm:hidden">{category.name.split(' ')[0]}</span>
                     </Button>
                   );
                 })}
@@ -249,27 +304,27 @@ export default function Explore() {
 
             {/* Content Tabs */}
             <Tabs defaultValue="discover" className="flex-1">
-              <TabsList className="w-full justify-start border-b border-border rounded-none h-12 bg-transparent p-0">
+              <TabsList className="w-full justify-start border-b border-border rounded-none h-12 bg-transparent p-0 sticky top-0 z-10 bg-background" style={{ top: isHeaderVisible ? `${headerHeight}px` : '0' }}>
                 <TabsTrigger 
                   value="discover" 
-                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent"
+                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent px-3 sm:px-6"
                 >
                   <FaCompass />
-                  Discover
+                  <span className="hidden sm:inline">Discover</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="trending" 
-                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent"
+                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent px-3 sm:px-6"
                 >
                   <FaFire />
-                  Trending
+                  <span className="hidden sm:inline">Trending</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="hashtags" 
-                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent"
+                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent px-3 sm:px-6"
                 >
                   <FaHashtag />
-                  Hashtags
+                  <span className="hidden sm:inline">Hashtags</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -281,15 +336,15 @@ export default function Explore() {
                       Search results for "{activeSearchQuery}"
                     </h3>
                     {searchLoading ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[...Array(6)].map((_, i) => (
-                          <Skeleton key={i} className="h-80 w-full" />
+                          <Skeleton key={i} className="h-96 w-full" />
                         ))}
                       </div>
                     ) : searchResults && Array.isArray(searchResults) && searchResults.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="search-results">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="search-results">
                         {searchResults.map((product: any) => (
-                          <ProductCard key={product.id} product={product} />
+                          <ProductCard key={product.id} product={product} className="h-96" />
                         ))}
                       </div>
                     ) : (
@@ -304,15 +359,15 @@ export default function Explore() {
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Featured Products</h3>
                     {featuredLoading ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[...Array(6)].map((_, i) => (
-                          <Skeleton key={i} className="h-80 w-full" />
+                          <Skeleton key={i} className="h-96 w-full" />
                         ))}
                       </div>
                     ) : featuredProducts && Array.isArray(featuredProducts) && featuredProducts.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="featured-products">
-                        {featuredProducts.slice(0, 12).map((product: any) => (
-                          <ProductCard key={product.id} product={product} />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="featured-products">
+                        {featuredProducts.slice(0, 15).map((product: any) => (
+                          <ProductCard key={product.id} product={product} className="h-96" />
                         ))}
                       </div>
                     ) : (
@@ -334,15 +389,15 @@ export default function Explore() {
                     Trending Products
                   </h3>
                   {trendingLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {[...Array(6)].map((_, i) => (
-                        <Skeleton key={i} className="h-80 w-full" />
+                        <Skeleton key={i} className="h-96 w-full" />
                       ))}
                     </div>
                   ) : trendingProducts && Array.isArray(trendingProducts) && trendingProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="trending-products">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="trending-products">
                       {trendingProducts.map((product: any) => (
-                        <ProductCard key={product.id} product={product} />
+                        <ProductCard key={product.id} product={product} className="h-96" />
                       ))}
                     </div>
                   ) : (
@@ -362,7 +417,7 @@ export default function Explore() {
                     <FaHashtag className="text-primary" />
                     Trending Hashtags
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="trending-hashtags">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="trending-hashtags">
                     {trendingHashtags.map((hashtag, index) => (
                       <Card 
                         key={hashtag.tag}
@@ -393,8 +448,19 @@ export default function Explore() {
           </div>
         </div>
       </div>
-      
+
       <RightSidebar />
+
+      {/* Scroll to top button */}
+      {!isHeaderVisible && (
+        <Button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 rounded-full w-12 h-12 p-0 z-50"
+          size="icon"
+        >
+          <FaChevronUp />
+        </Button>
+      )}
     </div>
   );
 }
