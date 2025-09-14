@@ -25,9 +25,10 @@ interface ProductCardProps {
     };
   };
   showAddToVroom?: boolean;
+  className?: string;
 }
 
-export default function ProductCard({ product, showAddToVroom = true }: ProductCardProps) {
+export default function ProductCard({ product, showAddToVroom = true, className }: ProductCardProps) {
   const { addToCart } = useCart();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
@@ -85,7 +86,7 @@ export default function ProductCard({ product, showAddToVroom = true }: ProductC
 
   return (
     <>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col" data-testid={`product-card-${product.id}`}>
+      <Card className={`overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col ${className || ''}`} data-testid={`product-card-${product.id}`}>
         <div className="relative">
           <img
             src={mainImage}

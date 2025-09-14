@@ -74,7 +74,7 @@ export default function Explore() {
   }, []);
 
   // Scroll handling for header visibility
-  useEffect(() {
+  useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
