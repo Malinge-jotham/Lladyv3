@@ -226,7 +226,7 @@ export default function Landing() {
 
               <div className="space-y-4">
                 <Button 
-                  onClick={() => window.location.href = '/dashboard'}
+                  onClick={() => window.location.href = '/api/login'}
                   className="w-full"
                 >
                   Go to Dashboard

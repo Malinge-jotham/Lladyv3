@@ -48,8 +48,8 @@ export default function ProductPost({ product }: ProductPostProps) {
 
   // Get currency symbol - default to $ if not specified
   const currencySymbol = product.currency 
-    ? CURRENCY_SYMBOLS[product.currency] || "$" 
-    : "$";
+    ? CURRENCY_SYMBOLS[product.currency] || "ksh" 
+    : "ksh";
 
   const likeMutation = useMutation({
     mutationFn: async () => {
