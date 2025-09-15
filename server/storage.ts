@@ -30,11 +30,16 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, like, ilike, not, inArray, isNull } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  createUserWithPassword(userData: any): Promise<User>;
+  verifyPassword(email: string, password: string): Promise<User | null>;
+  updatePassword(userId: string, newPassword: string): Promise<void>;
   updateProfile(userId: string, profile: UpdateProfile): Promise<User>;
   getUserProfile(userId: string): Promise<{ user: User; followers: number; following: number } | undefined>;
   
@@ -109,6 +114,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -122,6 +132,55 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async createUserWithPassword(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    username?: string;
+    bannerImageUrl?: string;
+    bio?: string;
+    location?: string;
+    website?: string;
+  }): Promise<User> {
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        password: hashedPassword,
+      })
+      .returning();
+    return user;
+  }
+
+  async verifyPassword(email: string, password: string): Promise<User | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user || !user.password) {
+      return null;
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return null;
+    }
+
+    return user;
+  }
+
+  async updatePassword(userId: string, newPassword: string): Promise<void> {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    await db
+      .update(users)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 
   async updateProfile(userId: string, profile: UpdateProfile): Promise<User> {
@@ -148,7 +207,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(follows.followerId, userId));
 
     return {
-      user,
+      user: { ...user, password: null }, // Hide password in public profile
       followers: Number(followersResult.count),
       following: Number(followingResult.count),
     };
@@ -298,7 +357,7 @@ export class DatabaseStorage implements IStorage {
     // Combine comments with their replies
     return topLevelComments.map(row => ({
       ...row.product_comments,
-      user: row.users || { id: '', email: null, firstName: null, lastName: null, profileImageUrl: null, bannerImageUrl: null, username: null, bio: null, location: null, website: null, createdAt: null, updatedAt: null },
+      user: row.users || { id: '', email: null, password: null, firstName: null, lastName: null, profileImageUrl: null, bannerImageUrl: null, username: null, bio: null, location: null, website: null, createdAt: null, updatedAt: null },
       replies: repliesByParent[row.product_comments.id] || []
     }));
   }
@@ -621,6 +680,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: users.id,
         email: users.email,
+        password: sql<string | null>`null`, // Hide password for public data
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
@@ -642,6 +702,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: users.id,
         email: users.email,
+        password: sql<string | null>`null`, // Hide password for public data
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
