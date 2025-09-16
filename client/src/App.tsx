@@ -12,23 +12,27 @@ import Trending from "@/pages/trending";
 import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
-
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <>
+          <Route path="/" component={Landing} />
+          <Route component={Landing} />
+        </>
       ) : (
         <>
           <Route path="/" component={Home} />
           <Route path="/explore" component={Explore} />
+          {/* Separate routes for user vrooms and specific vroom */}
+          {/* Routes for vrooms */}
           <Route path="/vroom/:id?" component={Vroom} />
           <Route path="/messages" component={Messages} />
           <Route path="/trending" component={Trending} />
           <Route path="/profile" component={Profile} />
-         
+
         </>
       )}
       <Route component={NotFound} />
