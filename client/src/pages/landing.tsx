@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
 import { useLocation } from "wouter";
+import { queryClient } from "../lib/queryClient";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "../components/ui/card";
@@ -112,7 +113,9 @@ const Landing: React.FC = () => {
         setMessage({ type: "success", text: "Success!" });
         setIsAuthenticated(true);
         setUser(data.user);
-        setLocation("/home");
+        // Invalidate auth query to update Router state
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        setLocation("/");
       } else {
         setMessage({ type: "error", text: data.error });
       }
@@ -132,6 +135,8 @@ const Landing: React.FC = () => {
     setIsAuthenticated(false);
     setUser(null);
     wsRef.current?.close();
+    // Invalidate auth query to update Router state
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     setMessage({ type: "success", text: "Logged out successfully!" });
   };
 
