@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
 import { useLocation } from "wouter";
 import { queryClient } from "../lib/queryClient";
+import { useAuth } from "../hooks/useAuth";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "../components/ui/card";
@@ -38,6 +39,7 @@ type WebSocketStatus = "connected" | "disconnected" | "connecting" | "error";
 
 // ---------- Component ----------
 const Landing: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -48,16 +50,15 @@ const Landing: React.FC = () => {
     username: "",
   });
   const [message, setMessage] = useState<Message | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const [wsStatus, setWsStatus] = useState<WebSocketStatus>("disconnected");
 
   const wsRef = useRef<WebSocket | null>(null);
   const [, setLocation] = useLocation();
 
   // ----- WebSocket Connection -----
+  // Note: WebSocket disabled for now as it requires proper user ID
   useEffect(() => {
-    if (!isAuthenticated) return;
+    return; // Disabled until proper authentication flow
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.hostname === "localhost"
@@ -88,7 +89,7 @@ const Landing: React.FC = () => {
     return () => {
       socket.close();
     };
-  }, [isAuthenticated]);
+  }, []);
 
   // ----- Handle input change -----
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -111,10 +112,9 @@ const Landing: React.FC = () => {
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Success!" });
-        setIsAuthenticated(true);
-        setUser(data.user);
-        // Invalidate auth query to update Router state
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        // Force refresh auth state to update Router
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/auth/user"], type: "active" });
         setLocation("/");
       } else {
         setMessage({ type: "error", text: data.error });
@@ -132,11 +132,10 @@ const Landing: React.FC = () => {
   // ----- Logout -----
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { credentials: "include" });
-    setIsAuthenticated(false);
-    setUser(null);
     wsRef.current?.close();
-    // Invalidate auth query to update Router state
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    // Force refresh auth state to update Router
+    await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    await queryClient.refetchQueries({ queryKey: ["/api/auth/user"], type: "active" });
     setMessage({ type: "success", text: "Logged out successfully!" });
   };
 
@@ -203,14 +202,14 @@ const Landing: React.FC = () => {
         ) : (
           <>
             <CardHeader className="text-center">
-              <CardTitle>Welcome, {user?.firstName || "User"}!</CardTitle>
+              <CardTitle>Welcome, {user?.firstName || user?.name || "User"}!</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center space-y-4">
               <Avatar className="w-20 h-20">
                 <AvatarImage src="/default-avatar.png" alt="User" />
                 <AvatarFallback>{user?.firstName?.[0] || "U"}</AvatarFallback>
               </Avatar>
-              <Button onClick={() => setLocation("/home")} className="w-full">Go to Home</Button>
+              <Button onClick={() => setLocation("/")} className="w-full">Go to Home</Button>
               <Button onClick={handleLogout} variant="outline" className="w-full">Logout</Button>
             </CardContent>
           </>
