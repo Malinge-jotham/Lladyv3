@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FaStore, FaEye, FaHeart, FaUser, FaShoppingBag, FaLock } from "react-icons/fa";
 import { Link } from "wouter";
+import { useState } from "react";
 
 interface VroomCardProps {
   vroom: {
@@ -27,65 +28,52 @@ interface VroomCardProps {
       followers: number;
       views: number;
     };
-    products?: any[]; // Array of products in the vroom
+    products?: any[];
   };
   showFollowButton?: boolean;
-  isFollowing?: boolean;
-  onFollowToggle?: (vroomId: string, isFollowing: boolean) => void;
+  initialIsFollowing?: boolean;
 }
 
 export default function VroomCard({ 
   vroom, 
   showFollowButton = false, 
-  isFollowing = false, 
-  onFollowToggle 
+  initialIsFollowing = false 
 }: VroomCardProps) {
-  const handleFollowClick = (e: React.MouseEvent) => {
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
+
+  const handleFollowClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onFollowToggle) {
-      onFollowToggle(vroom.id, !isFollowing);
+
+    const prevState = isFollowing;
+    setIsFollowing(!isFollowing); // optimistic update
+
+    try {
+      const res = await fetch(`/api/vrooms/${vroom.id}/follow`, {
+        method: isFollowing ? "DELETE" : "POST",
+      });
+      if (!res.ok) throw new Error("Failed to toggle follow");
+    } catch (err) {
+      console.error(err);
+      // revert UI if request fails
+      setIsFollowing(prevState);
     }
   };
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // If the click was on the follow button, let that handle it
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
-    // Otherwise, navigation will be handled by the Link wrapper
-  };
-
-  // Calculate the accurate number of products
   const getProductCount = () => {
-    // Priority 1: Use the actual products array length if available
-    if (vroom.products && Array.isArray(vroom.products)) {
-      return vroom.products.length;
-    }
-
-    // Priority 2: Use the _count object (from Prisma or similar ORM)
-    if (vroom._count?.products !== undefined) {
-      return vroom._count.products;
-    }
-
-    // Priority 3: Use the stats object (legacy support)
-    if (vroom.stats?.products !== undefined) {
-      return vroom.stats.products;
-    }
-
-    // Default fallback
+    if (vroom.products && Array.isArray(vroom.products)) return vroom.products.length;
+    if (vroom._count?.products !== undefined) return vroom._count.products;
+    if (vroom.stats?.products !== undefined) return vroom.stats.products;
     return 0;
   };
 
   const productCount = getProductCount();
+  const followers = vroom._count?.followers || vroom.stats?.followers || 0;
+  const views = vroom._count?.views || vroom.stats?.views || 0;
 
   return (
     <Link href={`/vroom/${vroom.id}`}>
-      <Card 
-        className="hover:shadow-lg transition-all duration-300 cursor-pointer group border-0 overflow-hidden" 
-        data-testid={`vroom-card-${vroom.id}`}
-        onClick={handleCardClick}
-      >
+      <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer group border-0 overflow-hidden">
         <CardContent className="p-0 h-full flex flex-col">
           {/* Cover Image */}
           <div className="relative h-48 overflow-hidden">
@@ -101,10 +89,7 @@ export default function VroomCard({
               </div>
             )}
             <div className="absolute top-3 right-3">
-              <Badge 
-                variant={vroom.isPublic ? "default" : "secondary"} 
-                className="flex items-center gap-1"
-              >
+              <Badge variant={vroom.isPublic ? "default" : "secondary"} className="flex items-center gap-1">
                 {vroom.isPublic ? (
                   <>
                     <FaEye className="text-xs" />
@@ -118,19 +103,17 @@ export default function VroomCard({
                 )}
               </Badge>
             </div>
-
-            {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
 
           {/* Content */}
           <div className="p-4 flex-grow flex flex-col">
-            <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors" data-testid="vroom-name">
+            <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
               {vroom.name}
             </h3>
 
             {vroom.description && (
-              <p className="text-muted-foreground text-sm mb-3 line-clamp-2" data-testid="vroom-description">
+              <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                 {vroom.description}
               </p>
             )}
@@ -164,11 +147,11 @@ export default function VroomCard({
                 </span>
                 <span className="flex items-center gap-1" title="Followers">
                   <FaHeart className="text-xs" />
-                  {vroom._count?.followers || vroom.stats?.followers || 0}
+                  {followers}
                 </span>
                 <span className="flex items-center gap-1" title="Views">
                   <FaEye className="text-xs" />
-                  {vroom._count?.views || vroom.stats?.views || 0}
+                  {views}
                 </span>
               </div>
 
@@ -178,7 +161,6 @@ export default function VroomCard({
                   size="sm"
                   className="text-xs h-7 px-3"
                   onClick={handleFollowClick}
-                  data-testid={`follow-button-${vroom.id}`}
                 >
                   {isFollowing ? "Following" : "Follow"}
                 </Button>

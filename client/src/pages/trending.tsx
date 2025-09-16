@@ -11,8 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FaFire, FaChartLine, FaHashtag, FaExclamationTriangle, FaSync } from "react-icons/fa";
+import VroomCard from "@/components/vroom/VroomCard";
 
-// Define TypeScript interfaces
 interface Product {
   id: string;
   title: string;
@@ -30,6 +30,8 @@ interface Vroom {
   description: string;
   coverImageUrl?: string;
   productCount: number;
+  _count?: { followers: number; products: number; views: number };
+  stats?: { followers: number; products: number; views: number };
 }
 
 interface Hashtag {
@@ -43,7 +45,9 @@ export default function Trending() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const [activeTab, setActiveTab] = useState("products");
 
-  // Trending products query
+  // Follow state for trending vrooms
+  const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
+
   const {
     data: trendingProducts,
     isLoading: productsLoading,
@@ -55,7 +59,6 @@ export default function Trending() {
     retry: false,
   });
 
-  // Trending vrooms query
   const {
     data: trendingVrooms,
     isLoading: vroomsLoading,
@@ -67,7 +70,6 @@ export default function Trending() {
     retry: false,
   });
 
-  // Trending hashtags query (could be API-based in the future)
   const trendingHashtags: Hashtag[] = [
     { tag: "#handmade", count: "2.4K products" },
     { tag: "#vintage", count: "1.8K products" },
@@ -76,7 +78,6 @@ export default function Trending() {
     { tag: "#art", count: "743 products" },
   ];
 
-  // Authentication effect
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -88,7 +89,6 @@ export default function Trending() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  // Redirect effect
   useEffect(() => {
     if (shouldRedirect) {
       const timer = setTimeout(() => {
@@ -98,10 +98,8 @@ export default function Trending() {
     }
   }, [shouldRedirect]);
 
-  // Error handling effect
   useEffect(() => {
     const errors = [productsError, vroomsError];
-
     for (const error of errors) {
       if (error && isUnauthorizedError(error as Error)) {
         toast({
@@ -114,7 +112,6 @@ export default function Trending() {
       }
     }
 
-    // Handle other errors
     if (productsError && !isUnauthorizedError(productsError as Error)) {
       toast({
         title: "Error loading trending products",
@@ -122,7 +119,6 @@ export default function Trending() {
         variant: "destructive",
       });
     }
-
     if (vroomsError && !isUnauthorizedError(vroomsError as Error)) {
       toast({
         title: "Error loading trending vrooms",
@@ -136,6 +132,27 @@ export default function Trending() {
     if (productsError) refetchProducts();
     if (vroomsError) refetchVrooms();
   }, [productsError, vroomsError, refetchProducts, refetchVrooms]);
+
+  // Format numbers like 1.2K
+  const formatCount = (count: number): string => {
+    if (!count) return "0";
+    if (count < 1000) return count.toString();
+    return (count / 1000).toFixed(1) + "K";
+  };
+
+  const handleFollowToggle = async (vroomId: string, currentlyFollowing: boolean) => {
+    setFollowingStates(prev => ({ ...prev, [vroomId]: !currentlyFollowing }));
+
+    try {
+      const res = await fetch(`/api/vrooms/${vroomId}/follow`, {
+        method: currentlyFollowing ? "DELETE" : "POST",
+      });
+      if (!res.ok) throw new Error("Failed to toggle follow");
+    } catch (err) {
+      console.error(err);
+      setFollowingStates(prev => ({ ...prev, [vroomId]: currentlyFollowing }));
+    }
+  };
 
   if (authLoading) {
     return (
@@ -178,11 +195,7 @@ export default function Trending() {
               </div>
 
               {(productsError || vroomsError) && (
-                <Button 
-                  variant="outline" 
-                  onClick={handleRetry}
-                  className="flex items-center gap-2"
-                >
+                <Button variant="outline" onClick={handleRetry} className="flex items-center gap-2">
                   <FaSync className="text-muted-foreground" />
                   Retry
                 </Button>
@@ -193,139 +206,68 @@ export default function Trending() {
           {/* Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
             <TabsList className="grid grid-cols-3 w-full max-w-md mb-6">
-              <TabsTrigger value="products" className="flex items-center gap-2">
-                <FaFire />
-                Products
-              </TabsTrigger>
-              <TabsTrigger value="vrooms" className="flex items-center gap-2">
-                <FaChartLine />
-                Vrooms
-              </TabsTrigger>
-              <TabsTrigger value="hashtags" className="flex items-center gap-2">
-                <FaHashtag />
-                Hashtags
-              </TabsTrigger>
+              <TabsTrigger value="products" className="flex items-center gap-2"><FaFire /> Products</TabsTrigger>
+              <TabsTrigger value="vrooms" className="flex items-center gap-2"><FaChartLine /> Vrooms</TabsTrigger>
+              <TabsTrigger value="hashtags" className="flex items-center gap-2"><FaHashtag /> Hashtags</TabsTrigger>
             </TabsList>
 
             {/* Products Tab */}
             <TabsContent value="products" data-testid="trending-products-section">
-              <h2 className="text-2xl font-bold mb-6">Trending Products</h2>
               {productsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(6)].map((_, i) => (
-                    <Skeleton key={i} className="h-80 w-full rounded-lg" />
-                  ))}
-                </div>
-              ) : productsError ? (
-                <div className="text-center py-12" data-testid="products-error">
-                  <FaExclamationTriangle className="mx-auto text-4xl text-destructive mb-4" />
-                  <p className="text-destructive mb-2">Failed to load trending products</p>
-                  <Button onClick={() => refetchProducts()} className="mt-4">
-                    Try Again
-                  </Button>
+                  {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-80 w-full rounded-lg" />)}
                 </div>
               ) : trendingProducts && trendingProducts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="trending-products-grid">
-                  {trendingProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {trendingProducts.map((product) => <ProductCard key={product.id} product={product} />)}
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground" data-testid="empty-trending-products">
+                <div className="text-center py-12 text-muted-foreground">
                   <FaFire className="mx-auto text-4xl mb-4 opacity-50" />
                   <p>No trending products found.</p>
-                  <p className="text-sm">Check back later for trending content</p>
                 </div>
               )}
             </TabsContent>
 
             {/* Vrooms Tab */}
             <TabsContent value="vrooms" data-testid="trending-vrooms-section">
-              <h2 className="text-2xl font-bold mb-6">Popular Vrooms</h2>
               {vroomsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(6)].map((_, i) => (
-                    <Skeleton key={i} className="h-40 w-full rounded-lg" />
-                  ))}
-                </div>
-              ) : vroomsError ? (
-                <div className="text-center py-12" data-testid="vrooms-error">
-                  <FaExclamationTriangle className="mx-auto text-4xl text-destructive mb-4" />
-                  <p className="text-destructive mb-2">Failed to load trending vrooms</p>
-                  <Button onClick={() => refetchVrooms()} className="mt-4">
-                    Try Again
-                  </Button>
+                  {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-lg" />)}
                 </div>
               ) : trendingVrooms && trendingVrooms.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="trending-vrooms-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {trendingVrooms.map((vroom) => (
-                    <Card key={vroom.id} className="hover:shadow-lg transition-shadow cursor-pointer" data-testid={`vroom-card-${vroom.id}`}>
-                      <CardContent className="p-6">
-                        <div className="flex items-center space-x-4">
-                          {vroom.coverImageUrl ? (
-                            <img
-                              src={vroom.coverImageUrl}
-                              alt={vroom.name}
-                              className="w-16 h-16 rounded-lg object-cover"
-                            />
-                          ) : (
-                            <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
-                              <span className="text-2xl">🏪</span>
-                            </div>
-                          )}
-                          <div className="flex-1">
-                            <h3 className="font-semibold mb-1" data-testid={`vroom-name-${vroom.id}`}>
-                              {vroom.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-2" data-testid={`vroom-description-${vroom.id}`}>
-                              {vroom.description}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {vroom.productCount} products
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <VroomCard
+                      key={vroom.id}
+                      vroom={{
+                        ...vroom,
+                        stats: {
+                          ...vroom.stats,
+                          followers: vroom._count?.followers || vroom.stats?.followers || 0
+                        }
+                      }}
+                      showFollowButton
+                      isFollowing={followingStates[vroom.id] || false}
+                      onFollowToggle={handleFollowToggle}
+                    />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground" data-testid="empty-trending-vrooms">
+                <div className="text-center py-12 text-muted-foreground">
                   <FaChartLine className="mx-auto text-4xl mb-4 opacity-50" />
                   <p>No trending vrooms found.</p>
-                  <p className="text-sm">Check back later for trending content</p>
                 </div>
               )}
             </TabsContent>
 
             {/* Hashtags Tab */}
             <TabsContent value="hashtags" data-testid="trending-hashtags">
-              <h2 className="text-2xl font-bold mb-6">Trending Hashtags</h2>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FaChartLine className="text-accent" />
-                    <h3 className="text-xl font-semibold">Trending Hashtags</h3>
-                  </div>
-                  <div className="space-y-3">
-                    {trendingHashtags.map((item, index) => (
-                      <div
-                        key={item.tag}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-                        data-testid={`hashtag-${index}`}
-                      >
-                        <div>
-                          <Badge variant="secondary" className="font-medium text-base">
-                            {item.tag}
-                          </Badge>
-                          <p className="text-sm text-muted-foreground mt-1">{item.count}</p>
-                        </div>
-                        <FaChartLine className="text-accent" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-3">
+                {trendingHashtags.map((item, idx) => (
+                  <Badge key={idx} variant="secondary">{item.tag} ({item.count})</Badge>
+                ))}
+              </div>
             </TabsContent>
           </Tabs>
         </div>

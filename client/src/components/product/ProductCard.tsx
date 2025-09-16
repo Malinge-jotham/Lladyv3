@@ -139,7 +139,7 @@ export default function ProductCard({ product, showAddToVroom = true, className 
 
           <div className="flex items-center justify-between mb-3">
             <span className="text-xl font-bold text-primary" data-testid={`product-price-${product.id}`}>
-              ${displayPrice}
+              KSH{displayPrice}
             </span>
             {product.likes !== undefined && (
               <div className="flex items-center gap-1 text-muted-foreground">

@@ -3,65 +3,109 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FaSearch, FaChartLine, FaStore } from "react-icons/fa";
+import { FaSearch, FaChartLine, FaStore, FaHeart, FaEye } from "react-icons/fa";
+import { useState } from "react";
 
 export default function RightSidebar() {
-  const { data: trendingVrooms, isLoading: vroomsLoading } = useQuery({
+  const { data: trendingVrooms, isLoading: vroomsLoading, refetch: refetchVrooms } = useQuery({
     queryKey: ["/api/vrooms/trending"],
+    queryFn: async () => {
+      const res = await fetch("/api/vrooms/trending");
+      return res.json();
+    },
     retry: false,
   });
 
-  // Mock trending hashtags for now
-  const trendingHashtags = [
-    { tag: "#handmade", count: "2.4K products" },
-    { tag: "#vintage", count: "1.8K products" },
-    { tag: "#furniture", count: "1.2K products" },
-  ];
+  const { data: trendingHashtags, isLoading: hashtagsLoading } = useQuery({
+    queryKey: ["/api/hashtags/trending"],
+    queryFn: async () => {
+      const res = await fetch("/api/hashtags/trending");
+      return res.json();
+    },
+    retry: false,
+  });
+
+  const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
+
+  // Helper to format numbers like 1.2K
+  const formatCount = (count: number): string => {
+    if (!count) return "0";
+    if (count < 1000) return count.toString();
+    return (count / 1000).toFixed(1) + "K";
+  };
+
+  const handleFollowToggle = async (vroomId: string) => {
+    const isCurrentlyFollowing = followingStates[vroomId] || false;
+
+    // Optimistic UI update
+    setFollowingStates(prev => ({ ...prev, [vroomId]: !isCurrentlyFollowing }));
+
+    try {
+      const res = await fetch(`/api/vrooms/${vroomId}/follow`, {
+        method: isCurrentlyFollowing ? "DELETE" : "POST",
+      });
+      if (!res.ok) throw new Error("Failed to toggle follow");
+    } catch (err) {
+      console.error(err);
+      // Revert on error
+      setFollowingStates(prev => ({ ...prev, [vroomId]: isCurrentlyFollowing }));
+    }
+  };
 
   return (
-    <div className="fixed right-0 top-0 h-screen w-80 bg-white p-4 flex flex-col" data-testid="right-sidebar">
+    <div className="fixed right-0 top-0 h-screen w-80 bg-white p-4 flex flex-col">
       <div className="flex-1 overflow-y-auto">
         {/* Search */}
-        <div className="bg-muted rounded-full p-3 mb-6" data-testid="search-container">
+        <div className="bg-muted rounded-full p-3 mb-6">
           <div className="flex items-center space-x-3">
             <FaSearch className="text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search products and vrooms..."
               className="bg-transparent outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
-              data-testid="input-search"
             />
           </div>
         </div>
 
-        {/* Trending Products/Hashtags */}
-        <Card className="mb-6" data-testid="trending-hashtags-card">
+        {/* Trending Hashtags */}
+        <Card className="mb-6">
           <div className="p-4 border-b border-border">
-            <h3 className="text-lg font-semibold">Trending Products</h3>
+            <h3 className="text-lg font-semibold">Trending Hashtags</h3>
           </div>
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              {trendingHashtags.map((item, index) => (
-                <div
-                  key={item.tag}
-                  className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-                  data-testid={`trending-hashtag-${index}`}
-                >
-                  <div className="flex items-center justify-between">
+              {hashtagsLoading ? (
+                <div className="space-y-4 p-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-6 w-full rounded" />
+                  ))}
+                </div>
+              ) : trendingHashtags && trendingHashtags.length > 0 ? (
+                trendingHashtags.map((item: any, index: number) => (
+                  <div
+                    key={item.tag}
+                    className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex justify-between items-center"
+                  >
                     <div>
                       <p className="font-medium">{item.tag}</p>
-                      <p className="text-sm text-muted-foreground">{item.count}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.count} products
+                      </p>
                     </div>
                     <FaChartLine className="text-accent" />
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="p-4 text-center text-muted-foreground">
+                  No trending hashtags found.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Popular Vrooms */}
-        <Card className="mb-6" data-testid="popular-vrooms-card">
+        <Card className="mb-6">
           <div className="p-4 border-b border-border">
             <h3 className="text-lg font-semibold">Popular Vrooms</h3>
           </div>
@@ -70,58 +114,54 @@ export default function RightSidebar() {
               {vroomsLoading ? (
                 <div className="space-y-4 p-4">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex items-center space-x-3">
-                      <Skeleton className="w-10 h-10 rounded-lg" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-4 w-1/2" />
-                        <Skeleton className="h-3 w-3/4" />
-                      </div>
-                      <Skeleton className="h-6 w-12" />
-                    </div>
+                    <Skeleton key={i} className="h-12 w-full rounded" />
                   ))}
                 </div>
-              ) : trendingVrooms && Array.isArray(trendingVrooms) && trendingVrooms.length > 0 ? (
-                trendingVrooms.slice(0, 3).map((vroom: any, index: number) => (
-                  <div
-                    key={vroom.id}
-                    className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-                    data-testid={`popular-vroom-${index}`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      {vroom.coverImageUrl ? (
-                        <img
-                          src={vroom.coverImageUrl}
-                          alt={vroom.name}
-                          className="w-10 h-10 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                          <FaStore className="text-muted-foreground" />
+              ) : trendingVrooms && trendingVrooms.length > 0 ? (
+                trendingVrooms.slice(0, 3).map((vroom: any) => {
+                  const followerCount = vroom._count?.followers || vroom.stats?.followers || 0;
+                  const isFollowing = followingStates[vroom.id] || false;
+                  return (
+                    <div
+                      key={vroom.id}
+                      className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-3">
+                        {vroom.coverImageUrl ? (
+                          <img
+                            src={vroom.coverImageUrl}
+                            alt={vroom.name}
+                            className="w-10 h-10 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                            <FaStore className="text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium">{vroom.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatCount(vroom.stats?.productCount || 0)} products • {formatCount(followerCount)} followers
+                          </p>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium" data-testid={`vroom-name-${index}`}>
-                          {vroom.name}
-                        </p>
-                        <p className="text-sm text-muted-foreground" data-testid={`vroom-product-count-${index}`}>
-                          {Math.floor(Math.random() * 200) + 50} products
-                        </p>
                       </div>
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="text-primary hover:text-primary/80"
-                        data-testid={`button-follow-vroom-${index}`}
+                        variant={isFollowing ? "outline" : "default"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFollowToggle(vroom.id);
+                        }}
                       >
-                        Follow
+                        {isFollowing ? "Following" : "Follow"}
                       </Button>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <div className="p-4 text-center text-muted-foreground" data-testid="empty-popular-vrooms">
-                  <p>No popular vrooms found.</p>
-                </div>
+                <p className="p-4 text-center text-muted-foreground">
+                  No popular vrooms found.
+                </p>
               )}
             </div>
           </CardContent>
@@ -129,10 +169,8 @@ export default function RightSidebar() {
       </div>
 
       {/* Footer */}
-      <div className="py-4 border-t border-border mt-auto">
-        <p className="text-xs text-muted-foreground text-center">
-          © {new Date().getFullYear()} Eldady Mart. All Rights Reserved.
-        </p>
+      <div className="py-4 border-t border-border mt-auto text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} Eldady Mart. All Rights Reserved.
       </div>
     </div>
   );

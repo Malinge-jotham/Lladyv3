@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { FaSearch, FaComments, FaUserCircle, FaPaperPlane } from "react-icons/fa";
+import { FaSearch, FaComments } from "react-icons/fa";
 
 interface StartConversationModalProps {
   isOpen: boolean;
@@ -66,45 +66,39 @@ export default function StartConversationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden rounded-xl" data-testid="start-conversation-modal">
-        <DialogHeader className="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-          <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-gray-800">
-            <div className="p-2 bg-blue-100 rounded-full">
-              <FaComments className="text-blue-600" />
-            </div>
+      <DialogContent className="max-w-md" data-testid="start-conversation-modal">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FaComments />
             Start New Conversation
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 p-6">
+        <div className="space-y-4">
           <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search by name or email..."
+              placeholder="Search users..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 rounded-lg border-gray-300 focus:border-blue-400 focus:ring-blue-400"
+              className="pl-10"
               data-testid="input-search-users"
             />
           </div>
 
-          <div className="max-h-72 overflow-y-auto space-y-2 mt-4">
+          <div className="max-h-60 overflow-y-auto space-y-2">
             {searchQuery.length < 2 ? (
-              <div className="text-center py-8">
-                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                  <FaSearch className="text-gray-400 text-xl" />
-                </div>
-                <p className="text-gray-500 font-medium">Search for users</p>
-                <p className="text-sm text-gray-400 mt-1">Type at least 2 characters to find users</p>
-              </div>
+              <p className="text-center text-muted-foreground py-8">
+                Type at least 2 characters to search for users
+              </p>
             ) : isLoading ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border border-gray-100">
-                    <Skeleton className="w-12 h-12 rounded-full" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-3 w-32" />
+                  <div key={i} className="flex items-center space-x-3 p-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="space-y-1 flex-1">
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-3 w-3/4" />
                     </div>
                   </div>
                 ))}
@@ -113,7 +107,7 @@ export default function StartConversationModal({
               searchResults.map((user: any) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-blue-50 transition-all duration-200 group"
+                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors"
                   data-testid={`user-result-${user.id}`}
                 >
                   <div className="flex items-center space-x-3">
@@ -121,22 +115,24 @@ export default function StartConversationModal({
                       <img
                         src={user.profileImageUrl}
                         alt="User avatar"
-                        className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+                        className="w-10 h-10 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center border-2 border-white shadow-sm">
-                        <FaUserCircle className="text-blue-400 text-xl" />
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-muted-foreground text-sm">
+                          {user.firstName?.[0] || user.email?.[0] || '?'}
+                        </span>
                       </div>
                     )}
                     <div>
-                      <p className="font-medium text-gray-800">
+                      <p className="font-medium">
                         {user.firstName || user.lastName 
                           ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
                           : user.email
                         }
                       </p>
                       {user.email && (user.firstName || user.lastName) && (
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
                       )}
                     </div>
                   </div>
@@ -144,34 +140,16 @@ export default function StartConversationModal({
                     size="sm"
                     onClick={() => handleStartConversation(user)}
                     disabled={startConversationMutation.isPending}
-                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium transition-colors shadow-sm hover:shadow-md"
                     data-testid={`button-message-${user.id}`}
                   >
-                    {startConversationMutation.isPending ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Starting...
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <FaPaperPlane className="mr-1 text-xs" />
-                        Message
-                      </span>
-                    )}
+                    {startConversationMutation.isPending ? "Starting..." : "Message"}
                   </Button>
                 </div>
               ))
             ) : (
-              <div className="text-center py-8">
-                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                  <FaUserCircle className="text-gray-400 text-xl" />
-                </div>
-                <p className="text-gray-500 font-medium">No users found</p>
-                <p className="text-sm text-gray-400 mt-1">No results for "{searchQuery}"</p>
-              </div>
+              <p className="text-center text-muted-foreground py-8">
+                No users found matching "{searchQuery}"
+              </p>
             )}
           </div>
         </div>

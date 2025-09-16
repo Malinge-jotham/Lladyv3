@@ -197,11 +197,11 @@ export default function Explore() {
     <div className="flex min-h-screen">
       <Sidebar />
 
-      {/* Main Content - Adjusted to use full available width */}
-      <div className="flex-1 ml-16 lg:ml-64 mr-16 lg:mr-80"> {/* Responsive margins */}
+      {/* Main Content - Adjusted to use proper spacing */}
+      <div className="flex-1 ml-16 lg:ml-64 mr-0 lg:mr-80">
         <div className="flex">
-          {/* Center Content - Now uses full width between sidebars */}
-          <div className="flex-1 w-full border-x border-border min-h-screen">
+          {/* Center Content - Fixed width issues */}
+          <div className="flex-1 w-full border-x border-border min-h-screen overflow-x-hidden">
             {/* Header with scroll behavior */}
             <div 
               ref={headerRef}
@@ -344,7 +344,7 @@ export default function Explore() {
                     ) : searchResults && Array.isArray(searchResults) && searchResults.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="search-results">
                         {searchResults.map((product: any) => (
-                          <ProductCard key={product.id} product={product} className="h-96" />
+                          <ProductCard key={product.id} product={product} className="h-auto min-h-96" />
                         ))}
                       </div>
                     ) : (
@@ -367,7 +367,7 @@ export default function Explore() {
                     ) : featuredProducts && Array.isArray(featuredProducts) && featuredProducts.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="featured-products">
                         {featuredProducts.slice(0, 15).map((product: any) => (
-                          <ProductCard key={product.id} product={product} className="h-96" />
+                          <ProductCard key={product.id} product={product} className="h-auto min-h-96" />
                         ))}
                       </div>
                     ) : (
@@ -397,7 +397,7 @@ export default function Explore() {
                   ) : trendingProducts && Array.isArray(trendingProducts) && trendingProducts.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="trending-products">
                       {trendingProducts.map((product: any) => (
-                        <ProductCard key={product.id} product={product} className="h-96" />
+                        <ProductCard key={product.id} product={product} className="h-auto min-h-96" />
                       ))}
                     </div>
                   ) : (
@@ -451,11 +451,11 @@ export default function Explore() {
 
       <RightSidebar />
 
-      {/* Scroll to top button */}
+      {/* Scroll to top button - Positioned to avoid overlapping with sidebar */}
       {!isHeaderVisible && (
         <Button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 rounded-full w-12 h-12 p-0 z-50"
+          className="fixed bottom-6 right-6 lg:right-80 rounded-full w-12 h-12 p-0 z-40"
           size="icon"
         >
           <FaChevronUp />

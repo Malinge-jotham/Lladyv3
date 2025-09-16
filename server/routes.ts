@@ -353,6 +353,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to share product" });
     }
   });
+  // Get trending hashtags based on product stats
+  app.get('/api/hashtags/trending', async (req, res) => {
+    try {
+      const products = await storage.getTrendingProducts(); // Reuse your trending products logic
+      const hashtagCount: Record<string, number> = {};
+
+      products.forEach((product) => {
+        if (product.hashtags && Array.isArray(product.hashtags)) {
+          product.hashtags.forEach((tag: string) => {
+            const lowerTag = tag.toLowerCase();
+            hashtagCount[lowerTag] = (hashtagCount[lowerTag] || 0) + 1;
+          });
+        }
+      });
+
+      // Convert to array and sort by count
+      const trendingHashtags = Object.entries(hashtagCount)
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10); // top 10 hashtags
+
+      res.json(trendingHashtags);
+    } catch (error) {
+      console.error("Error fetching trending hashtags:", error);
+      res.status(500).json({ message: "Failed to fetch trending hashtags" });
+    }
+  });
 
   // Vroom routes
   app.get('/api/vrooms', async (req, res) => {
@@ -667,17 +694,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const senderId = req.user.claims.sub;
       const { receiverId, content } = req.body;
-      
+
       if (!receiverId || !content) {
         return res.status(400).json({ message: "receiverId and content are required" });
       }
-      
+
+      // 1. Check if a conversation already exists between sender and receiver
+      let conversation = await storage.findConversation(senderId, receiverId);
+
+      // 2. If no conversation exists, create one
+      if (!conversation) {
+        conversation = await storage.createConversation(senderId, receiverId);
+      }
+
+      // 3. Send the message inside that conversation
       const message = await storage.sendMessage(senderId, {
         receiverId,
+        conversationId: conversation.id, // link to existing/new conversation
         content: content.trim(),
       });
-      
-      res.status(201).json(message);
+
+      res.status(201).json({ conversation, message });
     } catch (error) {
       console.error("Error starting conversation:", error);
       res.status(500).json({ message: "Failed to start conversation" });
@@ -749,24 +786,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   // WebSocket server for real-time messaging
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-  wss.on('connection', (ws) => {
-    ws.on('message', (data) => {
+  // Track connected clients by userId
+  const clients = new Map<string, WebSocket>();
+
+  wss.on("connection", (ws, req) => {
+    // Example: you can parse JWT from query string or headers to identify the user
+    const params = new URLSearchParams(req.url?.split("?")[1]);
+    const userId = params.get("userId"); // ✅ Or decode JWT here
+
+    if (!userId) {
+      ws.close();
+      return;
+    }
+
+    clients.set(userId, ws);
+
+    console.log(`User ${userId} connected via WebSocket`);
+
+    ws.on("message", async (data) => {
       try {
         const message = JSON.parse(data.toString());
-        
-        // Broadcast message to all connected clients
-        wss.clients.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(message));
-          }
+        const { receiverId, content } = message;
+
+        if (!receiverId || !content) {
+          return; // ignore bad messages
+        }
+
+        // ✅ Check or create conversation before saving message
+        let conversation = await storage.findConversation(userId, receiverId);
+        if (!conversation) {
+          conversation = await storage.createConversation(userId, receiverId);
+        }
+
+        // ✅ Save message in DB
+        const savedMessage = await storage.sendMessage(userId, {
+          receiverId,
+          conversationId: conversation.id,
+          content: content.trim(),
         });
+
+        // ✅ Deliver to receiver if online
+        const receiverSocket = clients.get(receiverId);
+        if (receiverSocket && receiverSocket.readyState === receiverSocket.OPEN) {
+          receiverSocket.send(JSON.stringify({ type: "message", data: savedMessage }));
+        }
+
+        // ✅ Echo back to sender (to update UI instantly)
+        ws.send(JSON.stringify({ type: "message", data: savedMessage }));
       } catch (error) {
-        console.error('Error handling WebSocket message:', error);
+        console.error("WebSocket message error:", error);
+        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
       }
+    });
+
+    ws.on("close", () => {
+      clients.delete(userId);
+      console.log(`User ${userId} disconnected`);
     });
   });
 
   return httpServer;
 }
+
