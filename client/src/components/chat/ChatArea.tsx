@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "../../lib/queryClient";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Skeleton } from "../ui/skeleton";
+import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/use-toast";
 import { FaPaperPlane, FaSmile, FaPaperclip, FaArrowLeft, FaPhone, FaVideo } from "react-icons/fa";
 
 interface ChatAreaProps {

@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import Sidebar from "@/components/layout/Sidebar";
-import ProductCard from "@/components/product/ProductCard";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/use-toast";
+import { isUnauthorizedError } from "../lib/authUtils";
+import Sidebar from "../components/layout/Sidebar";
+import ProductCard from "../components/product/ProductCard";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
+import { Button } from "../components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { FaFire, FaChartLine, FaHashtag, FaExclamationTriangle, FaSync } from "react-icons/fa";
-import VroomCard from "@/components/vroom/VroomCard";
+import VroomCard from "../components/vroom/VroomCard";
 
 interface Product {
   id: string;

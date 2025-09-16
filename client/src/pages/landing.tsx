@@ -1,408 +1,218 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { FaGoogle } from "react-icons/fa";
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
+import React, { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
+import { useLocation } from "wouter";
+import {
+  Card, CardHeader, CardTitle, CardContent,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { FcGoogle } from "react-icons/fc";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Terminal, WifiOff, Wifi } from "lucide-react";
 
-export default function Landing() {
+// ---------- Types ----------
+interface User {
+  name: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+}
+
+interface Message {
+  type: "success" | "error" | "warning";
+  text: string;
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+}
+
+type WebSocketStatus = "connected" | "disconnected" | "connecting" | "error";
+
+// ---------- Component ----------
+const Landing: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    username: ''
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+    username: "",
   });
-  const [user, setUser] = useState(null);
+  const [message, setMessage] = useState<Message | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [wsStatus, setWsStatus] = useState<WebSocketStatus>("disconnected");
 
-  // Check if user is already authenticated
+  const wsRef = useRef<WebSocket | null>(null);
+  const [, setLocation] = useLocation();
+
+  // ----- WebSocket Connection -----
   useEffect(() => {
-    const checkAuthStatus = async () => {
+    if (!isAuthenticated) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.hostname === "localhost"
+      ? "localhost:5000" // ✅ always target backend in dev
+      : window.location.host;
+
+    const wsUrl = `${protocol}//${host}/ws?token=demo123`;
+
+    setWsStatus("connecting");
+    const socket = new WebSocket(wsUrl);
+    wsRef.current = socket;
+
+    socket.onopen = () => setWsStatus("connected");
+    socket.onclose = () => setWsStatus("disconnected");
+    socket.onerror = () => setWsStatus("error");
+
+    socket.onmessage = (event) => {
       try {
-        const response = await fetch('/api/auth/status', {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-          setIsAuthenticated(true);
+        const data = JSON.parse(event.data);
+        if (data.type === "notification") {
+          setMessage({ type: "success", text: data.message });
         }
-      } catch (error) {
-        console.log('Not authenticated');
+      } catch {
+        console.error("Invalid WS message", event.data);
       }
     };
 
-    checkAuthStatus();
-  }, []);
-
-  // Handle OAuth callback after redirect
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const oauthSuccess = urlParams.get('oauth_success');
-      const error = urlParams.get('error');
-
-      if (oauthSuccess === 'true') {
-        // OAuth was successful, check authentication status
-        try {
-          const response = await fetch('/api/auth/status', {
-            credentials: 'include'
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-            setIsAuthenticated(true);
-            setMessage({ type: 'success', text: 'Authentication successful!' });
-
-            // Redirect to dashboard after a brief delay
-            setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 1500);
-          }
-        } catch (error) {
-          console.error('Error checking auth status after OAuth:', error);
-        }
-      } else if (error) {
-        setMessage({ type: 'error', text: `OAuth failed: ${error}` });
-      }
+    return () => {
+      socket.close();
     };
+  }, [isAuthenticated]);
 
-    handleOAuthCallback();
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // ----- Handle input change -----
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ----- Handle login/signup -----
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/signup";
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMessage({ type: "success", text: "Success!" });
+        setIsAuthenticated(true);
+        setUser(data.user);
+        setLocation("/home");
+      } else {
+        setMessage({ type: "error", text: data.error });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Something went wrong." });
+    }
+  };
+
+  // ----- Google OAuth -----
   const handleGoogleAuth = () => {
-    // Store current location to redirect back after OAuth
-    localStorage.setItem('preOAuthRoute', window.location.pathname);
     window.location.href = "/api/auth/google";
   };
 
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      // For registration, split the name into firstName and lastName
-      let requestData = { ...formData };
-
-      if (!isLogin && formData.name) {
-        const nameParts = formData.name.split(' ');
-        requestData.firstName = nameParts[0] || '';
-        requestData.lastName = nameParts.slice(1).join(' ') || '';
-
-        // Generate a username if not provided
-        if (!requestData.username) {
-          requestData.username = requestData.email.split('@')[0] + Math.floor(Math.random() * 1000);
-        }
-      }
-
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-        credentials: 'include'
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: isLogin ? 'Login successful!' : 'Account created successfully!' });
-
-        // Update auth state
-        setUser(result.user);
-        setIsAuthenticated(true);
-
-        // Redirect to dashboard after a brief delay
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
-      } else {
-        setMessage({ type: 'error', text: result.message });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
+  // ----- Logout -----
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { credentials: "include" });
+    setIsAuthenticated(false);
+    setUser(null);
+    wsRef.current?.close();
+    setMessage({ type: "success", text: "Logged out successfully!" });
   };
 
+  // ----- Forgot Password -----
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      setMessage({ type: 'error', text: 'Please enter your email address first' });
+      setMessage({ type: "error", text: "Please enter your email first." });
       return;
     }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: formData.email })
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: result.message });
-      } else {
-        setMessage({ type: 'error', text: result.message });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
+    await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: formData.email }),
+    });
+    setMessage({ type: "success", text: "Password reset email sent!" });
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/logout', { credentials: 'include' });
-      setUser(null);
-      setIsAuthenticated(false);
-      setMessage({ type: 'success', text: 'Logged out successfully!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Logout failed. Please try again.' });
-    }
+  // Connection status indicator
+  const renderConnectionStatus = () => {
+    const statusConfig = {
+      connected: { text: "Connected", icon: <Wifi size={16} className="text-green-500" /> },
+      disconnected: { text: "Disconnected", icon: <WifiOff size={16} className="text-gray-500" /> },
+      connecting: { text: "Connecting...", icon: <Terminal size={16} className="text-yellow-500" /> },
+      error: { text: "Connection Error", icon: <Terminal size={16} className="text-red-500" /> },
+    };
+    const { text, icon } = statusConfig[wsStatus];
+    return <div className="flex items-center justify-end gap-2 mb-2 text-xs">{icon}<span>{text}</span></div>;
   };
 
-  const toggleAuthMode = () => {
-    setIsLogin(!isLogin);
-    setMessage({ type: '', text: '' });
-  };
-
-  // If user is authenticated, show welcome message
-  if (isAuthenticated && user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary mb-2">Eldady</h1>
-            <p className="text-muted-foreground text-lg">Where products meet community</p>
-          </div>
-
-          <Card className="shadow-lg border border-border">
-            <CardContent className="p-8 text-center">
-              <div className="flex justify-center mb-6">
-                {user.profileImageUrl ? (
-                  <img 
-                    src={user.profileImageUrl} 
-                    alt="Profile" 
-                    className="w-24 h-24 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center">
-                    <span className="text-3xl text-white font-bold">
-                      {user.firstName?.[0]}{user.lastName?.[0]}
-                    </span>
+  // ---------- Render ----------
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md p-6 shadow-lg relative">
+        {renderConnectionStatus()}
+        {!isAuthenticated ? (
+          <>
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold">
+                {isLogin ? "Welcome Back" : "Create Account"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {message && (
+                <Alert variant={message.type === "error" ? "destructive" : "default"} className="mb-4">
+                  <AlertDescription>{message.text}</AlertDescription>
+                </Alert>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required />
+                    <Input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required />
                   </div>
                 )}
-              </div>
-
-              <h2 className="text-2xl font-semibold mb-2">
-                Welcome{user.firstName ? `, ${user.firstName}` : ''}!
-              </h2>
-
-              <p className="text-muted-foreground mb-6">
-                You are successfully authenticated.
-              </p>
-
-              <div className="space-y-4">
-                <Button 
-                  onClick={() => window.location.href = '/api/login'}
-                  className="w-full"
-                >
-                  Go to Dashboard
-                </Button>
-
-                <Button 
-                  onClick={handleLogout}
-                  variant="outline" 
-                  className="w-full"
-                >
-                  Log Out
-                </Button>
-              </div>
+                <Input type="email" name="email" placeholder="Email" onChange={handleChange} required />
+                <Input type="password" name="password" placeholder="Password" onChange={handleChange} required />
+                <Button type="submit" className="w-full">{isLogin ? "Login" : "Sign Up"}</Button>
+              </form>
+              <Button onClick={handleGoogleAuth} className="w-full mt-4 flex items-center gap-2" variant="outline">
+                <FcGoogle size={20} /> Google
+              </Button>
             </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Regular login/signup form
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2" data-testid="app-title">Eldady</h1>
-          <p className="text-muted-foreground text-lg" data-testid="app-subtitle">Where products meet community</p>
-        </div>
-
-        {/* Message Alert */}
-        {message.text && (
-          <div className={`mb-4 p-3 rounded-md flex items-center ${message.type === 'error' 
-            ? 'bg-destructive/20 text-destructive' 
-            : 'bg-green-100 text-green-800'}`}
-          >
-            {message.type === 'error' ? (
-              <AlertCircle className="h-5 w-5 mr-2" />
-            ) : (
-              <CheckCircle className="h-5 w-5 mr-2" />
-            )}
-            {message.text}
-          </div>
+          </>
+        ) : (
+          <>
+            <CardHeader className="text-center">
+              <CardTitle>Welcome, {user?.firstName || "User"}!</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center space-y-4">
+              <Avatar className="w-20 h-20">
+                <AvatarImage src="/default-avatar.png" alt="User" />
+                <AvatarFallback>{user?.firstName?.[0] || "U"}</AvatarFallback>
+              </Avatar>
+              <Button onClick={() => setLocation("/home")} className="w-full">Go to Home</Button>
+              <Button onClick={handleLogout} variant="outline" className="w-full">Logout</Button>
+            </CardContent>
+          </>
         )}
-
-        {/* Auth Card */}
-        <Card className="shadow-lg border border-border" data-testid="auth-card">
-          <CardContent className="p-8">
-            <form onSubmit={handleEmailAuth}>
-              <div className="space-y-6">
-                {/* Google Auth */}
-                <Button
-                  onClick={handleGoogleAuth}
-                  variant="outline"
-                  className="w-full bg-white border border-border py-3 px-4 flex items-center justify-center space-x-3 hover:bg-muted transition-colors"
-                  data-testid="button-google-auth"
-                  type="button"
-                  disabled={isLoading}
-                >
-                  <FaGoogle className="text-red-500" />
-                  <span className="font-medium text-foreground">Continue with Google</span>
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-card px-4 text-muted-foreground">or</span>
-                  </div>
-                </div>
-
-                {/* Email Form */}
-                <div className="space-y-4">
-                  {!isLogin && (
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        name="name"
-                        placeholder="Full Name"
-                        className="w-full pl-10"
-                        data-testid="input-name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required={!isLogin}
-                        disabled={isLoading}
-                      />
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      name="email"
-                      placeholder="Email address"
-                      className="w-full pl-10"
-                      data-testid="input-email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Password"
-                      className="w-full pl-10 pr-10"
-                      data-testid="input-password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    data-testid="button-email-auth"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <span>Loading...</span>
-                    ) : isLogin ? (
-                      <span>Sign In</span>
-                    ) : (
-                      <span>Create Account</span>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="text-center space-y-2">
-                  {isLogin && (
-                    <button 
-                      type="button" 
-                      className="text-sm text-accent hover:underline" 
-                      data-testid="link-forgot-password"
-                      onClick={handleForgotPassword}
-                      disabled={isLoading}
-                    >
-                      Forgot password?
-                    </button>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-                    <button 
-                      type="button" 
-                      className="text-primary hover:underline" 
-                      data-testid="link-toggle-auth"
-                      onClick={toggleAuthMode}
-                      disabled={isLoading}
-                    >
-                      {isLogin ? "Sign up" : "Sign in"}
-                    </button>
-                  </p>
-                </div>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+      </Card>
     </div>
   );
-}
+};
+
+export default Landing;

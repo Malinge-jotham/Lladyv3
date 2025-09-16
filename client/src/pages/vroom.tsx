@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import Sidebar from "@/components/layout/Sidebar";
-import ProductCard from "@/components/product/ProductCard";
-import SelectProductForVroomModal from "@/components/vroom/SelectProductForVroomModal";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
+import { isUnauthorizedError } from "../lib/authUtils";
+import Sidebar from "../components/layout/Sidebar";
+import ProductCard from "../components/product/ProductCard";
+import SelectProductForVroomModal from "../components/vroom/SelectProductForVroomModal";
+import { Card, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
+import { Badge } from "../components/ui/badge";
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "../components/ui/dropdown-menu";
 import { FaUser, FaStore, FaEye, FaHeart, FaPlus, FaEllipsisV, FaEdit, FaTrash, FaShare } from "react-icons/fa";
 
 interface VroomData {

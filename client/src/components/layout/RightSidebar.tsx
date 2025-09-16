@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "../ui/input";
+import { Card, CardContent } from "../ui/card";
+import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 import { FaSearch, FaChartLine, FaStore, FaHeart, FaEye } from "react-icons/fa";
 import { useState } from "react";
 

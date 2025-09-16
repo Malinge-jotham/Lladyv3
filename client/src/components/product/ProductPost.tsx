@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useCart } from "@/hooks/useCart";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "../../lib/queryClient";
+import { useCart } from "../../hooks/useCart";
+import { Button } from "../ui/button";
+import { useToast } from "../../hooks/use-toast";
 import { FaHeart, FaRegHeart, FaComment, FaRetweet, FaBookmark, FaShoppingCart } from "react-icons/fa";
 
 // Define currency symbols mapping

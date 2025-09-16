@@ -28,7 +28,7 @@ import {
   type InsertProductComment,
   type ProductComment,
 } from "@shared/schema";
-import { db } from "./db";
+import { db } from "./server/db";
 import { eq, desc, sql, and, or, like, ilike, not, inArray, isNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -87,6 +87,8 @@ export interface IStorage {
   getMessages(userId1: string, userId2: string): Promise<Message[]>;
   getConversations(userId: string): Promise<any[]>;
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
+  findConversation(userId1: string, userId2: string): Promise<any>;
+  createConversation(userId1: string, userId2: string): Promise<any>;
   
   // Follow operations
   followUser(followerId: string, followingId: string): Promise<void>;
@@ -642,6 +644,31 @@ export class DatabaseStorage implements IStorage {
       .update(messages)
       .set({ isRead: true })
       .where(and(eq(messages.receiverId, userId), eq(messages.senderId, senderId)));
+  }
+
+  async findConversation(userId1: string, userId2: string): Promise<any> {
+    // Since we don't have a separate conversations table, check if messages exist between users
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          and(eq(messages.senderId, userId1), eq(messages.receiverId, userId2)),
+          and(eq(messages.senderId, userId2), eq(messages.receiverId, userId1))
+        )
+      )
+      .limit(1);
+    
+    if (message) {
+      return { id: `${userId1}-${userId2}`, participants: [userId1, userId2] };
+    }
+    return null;
+  }
+
+  async createConversation(userId1: string, userId2: string): Promise<any> {
+    // For our simple messaging system, we don't need to create an actual conversation record
+    // We'll return a virtual conversation object
+    return { id: `${userId1}-${userId2}`, participants: [userId1, userId2] };
   }
 
   async searchUsers(query: string, excludeUserId: string): Promise<User[]> {

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "../../hooks/useAuth";
+import { apiRequest } from "../../lib/queryClient";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+} from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
+import { useToast } from "../../hooks/use-toast";
 import { useLocation } from "wouter";
 import { FaComments, FaPaperPlane, FaTimes } from "react-icons/fa";
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage } from "./storage";
+import { storage } from "../storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
@@ -174,7 +174,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Send the message inside that conversation
       const message = await storage.sendMessage(senderId, {
         receiverId,
-        conversationId: conversation.id, // link to existing/new conversation
         content: content.trim(),
       });
 
@@ -287,7 +286,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // ✅ Save message in DB
         const savedMessage = await storage.sendMessage(userId, {
           receiverId,
-          conversationId: conversation.id,
           content: content.trim(),
         });
 

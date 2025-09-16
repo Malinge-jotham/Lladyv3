@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useCart } from "@/hooks/useCart";
-import ShoppingCart from "@/components/cart/ShoppingCart";
-import PostProductModal from "@/components/product/PostProductModal";
-import CreateVroomModal from "@/components/vroom/CreateVroomModal";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { useCart } from "../../hooks/useCart";
+import ShoppingCart from "../cart/ShoppingCart";
+import PostProductModal from "../product/PostProductModal";
+import CreateVroomModal from "../vroom/CreateVroomModal";
 import { FaHome, FaCompass, FaFire, FaStore, FaComments, FaUser, FaShoppingCart, FaPlus, FaShoppingBag } from "react-icons/fa";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "../../hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 
 const navigationItems = [

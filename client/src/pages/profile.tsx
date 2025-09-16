@@ -1,29 +1,29 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import Sidebar from "@/components/layout/Sidebar";
-import RightSidebar from "@/components/layout/RightSidebar";
-import ProductCard from "@/components/product/ProductCard";
-import VroomCard from "@/components/vroom/VroomCard";
-import CreateVroomModal from "@/components/vroom/CreateVroomModal";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { useAuth } from "../hooks/useAuth";
+import { apiRequest, queryClient } from "../lib/queryClient";
+import Sidebar from "../components/layout/Sidebar";
+import RightSidebar from "../components/layout/RightSidebar";
+import ProductCard from "../components/product/ProductCard";
+import VroomCard from "../components/vroom/VroomCard";
+import CreateVroomModal from "../components/vroom/CreateVroomModal";
+import { Card, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Label } from "../components/ui/label";
 import { useForm } from "react-hook-form";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
+import { useToast } from "../hooks/use-toast";
 import { 
   FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaHeart, 
   FaCamera, FaPlus, FaLink, FaGlobe, FaTwitter, FaInstagram,
   FaUser, FaSignature
 } from "react-icons/fa";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { isUnauthorizedError } from "../lib/authUtils";
+import { ObjectUploader } from "../components/ObjectUploader";
 import type { UploadResult } from "@uppy/core";
 
 export default function Profile() {
