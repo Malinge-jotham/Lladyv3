@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent } from "react";
 import { useLocation } from "wouter";
 import { queryClient } from "../lib/queryClient";
 import { useAuth } from "../hooks/useAuth";
@@ -10,9 +10,7 @@ import { Input } from "../components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { FcGoogle } from "react-icons/fc";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { Terminal, WifiOff, Wifi } from "lucide-react";
 
-// ---------- Types ----------
 interface User {
   name: string;
   email: string;
@@ -35,9 +33,6 @@ interface FormData {
   username: string;
 }
 
-type WebSocketStatus = "connected" | "disconnected" | "connecting" | "error";
-
-// ---------- Component ----------
 const Landing: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
@@ -50,46 +45,8 @@ const Landing: React.FC = () => {
     username: "",
   });
   const [message, setMessage] = useState<Message | null>(null);
-  const [wsStatus, setWsStatus] = useState<WebSocketStatus>("disconnected");
 
-  const wsRef = useRef<WebSocket | null>(null);
   const [, setLocation] = useLocation();
-
-  // ----- WebSocket Connection -----
-  // Note: WebSocket disabled for now as it requires proper user ID
-  useEffect(() => {
-    return; // Disabled until proper authentication flow
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.hostname === "localhost"
-      ? "localhost:5000" // ✅ always target backend in dev
-      : window.location.host;
-
-    const wsUrl = `${protocol}//${host}/ws?token=demo123`;
-
-    setWsStatus("connecting");
-    const socket = new WebSocket(wsUrl);
-    wsRef.current = socket;
-
-    socket.onopen = () => setWsStatus("connected");
-    socket.onclose = () => setWsStatus("disconnected");
-    socket.onerror = () => setWsStatus("error");
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "notification") {
-          setMessage({ type: "success", text: data.message });
-        }
-      } catch {
-        console.error("Invalid WS message", event.data);
-      }
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, []);
 
   // ----- Handle input change -----
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -106,16 +63,16 @@ const Landing: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        credentials: "include",
+        credentials: "include", // important for cookie-based auth
       });
 
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Success!" });
-        // Force refresh auth state to update Router
+        // Force refresh auth state
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         await queryClient.refetchQueries({ queryKey: ["/api/auth/user"], type: "active" });
-        setLocation("/");
+        setLocation("/"); // redirect after login/signup
       } else {
         setMessage({ type: "error", text: data.error });
       }
@@ -132,44 +89,15 @@ const Landing: React.FC = () => {
   // ----- Logout -----
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { credentials: "include" });
-    wsRef.current?.close();
-    // Force refresh auth state to update Router
+    // Force refresh auth state
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     await queryClient.refetchQueries({ queryKey: ["/api/auth/user"], type: "active" });
     setMessage({ type: "success", text: "Logged out successfully!" });
   };
 
-  // ----- Forgot Password -----
-  const handleForgotPassword = async () => {
-    if (!formData.email) {
-      setMessage({ type: "error", text: "Please enter your email first." });
-      return;
-    }
-    await fetch("/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: formData.email }),
-    });
-    setMessage({ type: "success", text: "Password reset email sent!" });
-  };
-
-  // Connection status indicator
-  const renderConnectionStatus = () => {
-    const statusConfig = {
-      connected: { text: "Connected", icon: <Wifi size={16} className="text-green-500" /> },
-      disconnected: { text: "Disconnected", icon: <WifiOff size={16} className="text-gray-500" /> },
-      connecting: { text: "Connecting...", icon: <Terminal size={16} className="text-yellow-500" /> },
-      error: { text: "Connection Error", icon: <Terminal size={16} className="text-red-500" /> },
-    };
-    const { text, icon } = statusConfig[wsStatus];
-    return <div className="flex items-center justify-end gap-2 mb-2 text-xs">{icon}<span>{text}</span></div>;
-  };
-
-  // ---------- Render ----------
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md p-6 shadow-lg relative">
-        {renderConnectionStatus()}
         {!isAuthenticated ? (
           <>
             <CardHeader className="text-center">
