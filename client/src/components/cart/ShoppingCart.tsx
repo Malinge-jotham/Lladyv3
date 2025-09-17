@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "../../lib/queryClient";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
-import { Button } from "../ui/button";
-import { useToast } from "../../hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import CheckoutModal from "./CheckoutModal";
 import { useState } from "react";
 import { FaTimes, FaTrash } from "react-icons/fa";

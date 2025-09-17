@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "../../hooks/use-toast";
-import { useAuth } from "../../hooks/useAuth";
-import { apiRequest } from "../../lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
-import { Skeleton } from "../ui/skeleton";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FaStore, FaPlus, FaCheck } from "react-icons/fa";
 
 interface AddProductToVroomModalProps {

@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "../hooks/useAuth";
-import Sidebar from "../components/layout/Sidebar";
-import RightSidebar from "../components/layout/RightSidebar";
-import ProductPost from "../components/product/ProductPost";
-import { Card, CardContent } from "../components/ui/card";
-import { Skeleton } from "../components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import Sidebar from "@/components/layout/Sidebar";
+import RightSidebar from "@/components/layout/RightSidebar";
+import ProductPost from "@/components/product/ProductPost";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
-import { useToast } from "../hooks/use-toast";
-import { isUnauthorizedError } from "../lib/authUtils";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 // Define TypeScript interface for Product
 interface Product {

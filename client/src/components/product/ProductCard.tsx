@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Card, CardContent } from "../ui/card";
-import { Button } from "../ui/button";
-import { useCart } from "../../hooks/useCart";
-import { useAuth } from "../../hooks/useAuth";
-import { useToast } from "../../hooks/use-toast";
-import AddProductToVroomModal from "../vroom/AddProductToVroomModal";
-import MessageSellerButton from "./MessageSellerButton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
+import MessageSellerButton from "@/components/product/MessageSellerButton";
 import { FaHeart, FaShoppingCart, FaShare, FaStore, FaComment, FaEdit } from "react-icons/fa";
-import ProductCommentsModal from "./ProductCommentsModal";
+import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 
 interface ProductCardProps {
   product: {

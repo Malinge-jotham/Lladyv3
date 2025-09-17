@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "../hooks/useAuth";
-import Sidebar from "../components/layout/Sidebar";
-import ChatArea from "../components/chat/ChatArea";
-import StartConversationModal from "../components/messages/StartConversationModal";
-import { Input } from "../components/ui/input";
-import { Skeleton } from "../components/ui/skeleton";
-import { useToast } from "../hooks/use-toast";
-import { isUnauthorizedError } from "../lib/authUtils";
-import { Button } from "../components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import Sidebar from "@/components/layout/Sidebar";
+import ChatArea from "@/components/chat/ChatArea";
+import StartConversationModal from "@/components/messages/StartConversationModal";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { Button } from "@/components/ui/button";
 import { FaPlus, FaSearch } from "react-icons/fa";
 
 export default function Messages() {
