@@ -1,407 +1,95 @@
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { FaGoogle } from "react-icons/fa";
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FaShoppingBag, FaUsers, FaComments, FaArrowRight } from "react-icons/fa";
 
 export default function Landing() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    username: ''
-  });
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Check if user is already authenticated
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const response = await fetch('/api/auth/status', {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.log('Not authenticated');
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
-
-  // Handle OAuth callback after redirect
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const oauthSuccess = urlParams.get('oauth_success');
-      const error = urlParams.get('error');
-
-      if (oauthSuccess === 'true') {
-        // OAuth was successful, check authentication status
-        try {
-          const response = await fetch('/api/auth/status', {
-            credentials: 'include'
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-            setIsAuthenticated(true);
-            setMessage({ type: 'success', text: 'Authentication successful!' });
-
-            // Redirect to dashboard after a brief delay
-            setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 1500);
-          }
-        } catch (error) {
-          console.error('Error checking auth status after OAuth:', error);
-        }
-      } else if (error) {
-        setMessage({ type: 'error', text: `OAuth failed: ${error}` });
-      }
-    };
-
-    handleOAuthCallback();
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleLogin = () => {
+    window.location.href = "/api/login";
   };
 
-  const handleGoogleAuth = () => {
-    // Store current location to redirect back after OAuth
-    localStorage.setItem('preOAuthRoute', window.location.pathname);
-    window.location.href = "/api/auth/google";
-  };
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
+      <div className="container mx-auto px-4 py-16">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent" data-testid="app-title">
+            Welcome to Eldady
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto" data-testid="app-subtitle">
+            The social commerce platform where you can discover, share, and sell amazing products 
+            while connecting with a vibrant community of creators and shoppers.
+          </p>
+          <Button 
+            onClick={handleLogin}
+            size="lg"
+            className="text-lg px-8 py-3"
+            data-testid="button-login"
+          >
+            Get Started
+            <FaArrowRight className="ml-2" />
+          </Button>
+        </div>
 
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      // For registration, split the name into firstName and lastName
-      let requestData = { ...formData };
-
-      if (!isLogin && formData.name) {
-        const nameParts = formData.name.split(' ');
-        requestData.firstName = nameParts[0] || '';
-        requestData.lastName = nameParts.slice(1).join(' ') || '';
-
-        // Generate a username if not provided
-        if (!requestData.username) {
-          requestData.username = requestData.email.split('@')[0] + Math.floor(Math.random() * 1000);
-        }
-      }
-
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-        credentials: 'include'
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: isLogin ? 'Login successful!' : 'Account created successfully!' });
-
-        // Update auth state
-        setUser(result.user);
-        setIsAuthenticated(true);
-
-        // Redirect to dashboard after a brief delay
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
-      } else {
-        setMessage({ type: 'error', text: result.message });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!formData.email) {
-      setMessage({ type: 'error', text: 'Please enter your email address first' });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: formData.email })
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: result.message });
-      } else {
-        setMessage({ type: 'error', text: result.message });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/logout', { credentials: 'include' });
-      setUser(null);
-      setIsAuthenticated(false);
-      setMessage({ type: 'success', text: 'Logged out successfully!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Logout failed. Please try again.' });
-    }
-  };
-
-  const toggleAuthMode = () => {
-    setIsLogin(!isLogin);
-    setMessage({ type: '', text: '' });
-  };
-
-  // If user is authenticated, show welcome message
-  if (isAuthenticated && user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary mb-2">Eldady</h1>
-            <p className="text-muted-foreground text-lg">Where products meet community</p>
-          </div>
-
-          <Card className="shadow-lg border border-border">
-            <CardContent className="p-8 text-center">
-              <div className="flex justify-center mb-6">
-                {user.profileImageUrl ? (
-                  <img 
-                    src={user.profileImageUrl} 
-                    alt="Profile" 
-                    className="w-24 h-24 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center">
-                    <span className="text-3xl text-white font-bold">
-                      {user.firstName?.[0]}{user.lastName?.[0]}
-                    </span>
-                  </div>
-                )}
+        {/* Features */}
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <Card className="text-center hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+                <FaShoppingBag className="text-2xl text-primary" />
               </div>
+              <CardTitle>Shop & Sell</CardTitle>
+              <CardDescription>
+                Discover unique products and showcase your own creations to a global audience.
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-              <h2 className="text-2xl font-semibold mb-2">
-                Welcome{user.firstName ? `, ${user.firstName}` : ''}!
-              </h2>
-
-              <p className="text-muted-foreground mb-6">
-                You are successfully authenticated.
-              </p>
-
-              <div className="space-y-4">
-                <Button 
-                  onClick={() => window.location.href = '/api/login'}
-                  className="w-full"
-                >
-                  Go to Dashboard
-                </Button>
-
-                <Button 
-                  onClick={handleLogout}
-                  variant="outline" 
-                  className="w-full"
-                >
-                  Log Out
-                </Button>
+          <Card className="text-center hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+                <FaUsers className="text-2xl text-primary" />
               </div>
+              <CardTitle>Connect</CardTitle>
+              <CardDescription>
+                Build meaningful connections with other creators, sellers, and shoppers in our community.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="text-center hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
+                <FaComments className="text-2xl text-primary" />
+              </div>
+              <CardTitle>Engage</CardTitle>
+              <CardDescription>
+                Share your thoughts, ask questions, and get recommendations from the community.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Call to Action */}
+        <div className="text-center">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle className="text-2xl">Ready to Join?</CardTitle>
+              <CardDescription className="text-lg">
+                Start your journey with Eldady today and become part of our growing community.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={handleLogin}
+                size="lg"
+                className="w-full text-lg py-3"
+                data-testid="button-join-now"
+              >
+                Join Now - It's Free!
+              </Button>
             </CardContent>
           </Card>
         </div>
-      </div>
-    );
-  }
-
-  // Regular login/signup form
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2" data-testid="app-title">Eldady</h1>
-          <p className="text-muted-foreground text-lg" data-testid="app-subtitle">Where products meet community</p>
-        </div>
-
-        {/* Message Alert */}
-        {message.text && (
-          <div className={`mb-4 p-3 rounded-md flex items-center ${message.type === 'error' 
-            ? 'bg-destructive/20 text-destructive' 
-            : 'bg-green-100 text-green-800'}`}
-          >
-            {message.type === 'error' ? (
-              <AlertCircle className="h-5 w-5 mr-2" />
-            ) : (
-              <CheckCircle className="h-5 w-5 mr-2" />
-            )}
-            {message.text}
-          </div>
-        )}
-
-        {/* Auth Card */}
-        <Card className="shadow-lg border border-border" data-testid="auth-card">
-          <CardContent className="p-8">
-            <form onSubmit={handleEmailAuth}>
-              <div className="space-y-6">
-                {/* Google Auth */}
-                <Button
-                  onClick={handleGoogleAuth}
-                  variant="outline"
-                  className="w-full bg-white border border-border py-3 px-4 flex items-center justify-center space-x-3 hover:bg-muted transition-colors"
-                  data-testid="button-google-auth"
-                  type="button"
-                  disabled={isLoading}
-                >
-                  <FaGoogle className="text-red-500" />
-                  <span className="font-medium text-foreground">Continue with Google</span>
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-card px-4 text-muted-foreground">or</span>
-                  </div>
-                </div>
-
-                {/* Email Form */}
-                <div className="space-y-4">
-                  {!isLogin && (
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        name="name"
-                        placeholder="Full Name"
-                        className="w-full pl-10"
-                        data-testid="input-name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required={!isLogin}
-                        disabled={isLoading}
-                      />
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      name="email"
-                      placeholder="Email address"
-                      className="w-full pl-10"
-                      data-testid="input-email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Password"
-                      className="w-full pl-10 pr-10"
-                      data-testid="input-password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    data-testid="button-email-auth"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <span>Loading...</span>
-                    ) : isLogin ? (
-                      <span>Sign In</span>
-                    ) : (
-                      <span>Create Account</span>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="text-center space-y-2">
-                  {isLogin && (
-                    <button 
-                      type="button" 
-                      className="text-sm text-accent hover:underline" 
-                      data-testid="link-forgot-password"
-                      onClick={handleForgotPassword}
-                      disabled={isLoading}
-                    >
-                      Forgot password?
-                    </button>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-                    <button 
-                      type="button" 
-                      className="text-primary hover:underline" 
-                      data-testid="link-toggle-auth"
-                      onClick={toggleAuthMode}
-                      disabled={isLoading}
-                    >
-                      {isLogin ? "Sign up" : "Sign in"}
-                    </button>
-                  </p>
-                </div>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

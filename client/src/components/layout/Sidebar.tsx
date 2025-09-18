@@ -7,25 +7,43 @@ import ShoppingCart from "@/components/cart/ShoppingCart";
 import PostProductModal from "@/components/product/PostProductModal";
 import CreateVroomModal from "@/components/vroom/CreateVroomModal";
 import { FaHome, FaCompass, FaFire, FaStore, FaComments, FaUser, FaShoppingCart, FaPlus, FaShoppingBag } from "react-icons/fa";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 
 const navigationItems = [
   { path: "/", icon: FaHome, label: "Home", testId: "nav-home" },
   { path: "/explore", icon: FaCompass, label: "Explore", testId: "nav-explore" },
   { path: "/trending", icon: FaFire, label: "Trending", testId: "nav-trending" },
-  { path: "/vroom", icon: FaStore, label: "My Vroom", testId: "nav-vroom" },
+  { path: "/vroom", icon: FaStore, label: "My Vroom", testId: "nav-vroom" }, // special handling
   { path: "/messages", icon: FaComments, label: "Messages", testId: "nav-messages" },
   { path: "/profile", icon: FaUser, label: "Profile", testId: "nav-profile" },
 ];
 
 export default function Sidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [showCart, setShowCart] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [showCreateVroom, setShowCreateVroom] = useState(false);
   const { cartItemCount } = useCart();
+  const { user } = useAuth();
+
+  // fetch user vrooms
+  const { data: userVrooms } = useQuery({
+    queryKey: ["/api/vrooms/user"],
+    enabled: !!user,
+    select: (data) => Array.isArray(data) ? data : [],
+  });
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
+  };
+
+  const handleMyVroomClick = () => {
+    if (userVrooms && userVrooms.length > 0) {
+      setLocation(`/vroom/${userVrooms[0].id}`); // redirect to first vroom
+    } else {
+      setLocation("/vroom"); // fallback to general vroom page
+    }
   };
 
   return (
@@ -44,9 +62,28 @@ export default function Sidebar() {
           <nav className="space-y-2" data-testid="sidebar-navigation">
             {navigationItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location === item.path || 
+              const isActive =
+                location === item.path ||
                 (item.path === "/vroom" && location.startsWith("/vroom"));
-              
+
+              if (item.path === "/vroom") {
+                return (
+                  <div
+                    key={item.path}
+                    onClick={handleMyVroomClick}
+                    className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    }`}
+                    data-testid={item.testId}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                );
+              }
+
               return (
                 <Link key={item.path} href={item.path}>
                   <div
@@ -90,7 +127,7 @@ export default function Sidebar() {
               <FaPlus className="mr-2" />
               Post Product
             </Button>
-            
+
             <Button
               onClick={() => setShowCreateVroom(true)}
               variant="outline"
@@ -119,7 +156,7 @@ export default function Sidebar() {
 
       {/* Post Product Modal */}
       <PostProductModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
-      
+
       {/* Create Vroom Modal */}
       <CreateVroomModal isOpen={showCreateVroom} onClose={() => setShowCreateVroom(false)} />
     </>

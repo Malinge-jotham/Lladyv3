@@ -194,7 +194,7 @@ export default function Vroom() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      
+
       <div className="flex-1 ml-64">
         <div className="max-w-6xl mx-auto p-6">
           {/* Vroom Header */}
@@ -223,12 +223,12 @@ export default function Vroom() {
                     <h1 className="text-3xl font-bold" data-testid="vroom-name">
                       {vroom.name}
                     </h1>
-                    
+
                     <div className="flex items-center gap-2">
                       <Badge variant={vroom.isPublic ? "default" : "secondary"}>
                         {vroom.isPublic ? "Public" : "Private"}
                       </Badge>
-                      
+
                       {canEdit && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -332,7 +332,7 @@ export default function Vroom() {
           {/* Products Section */}
           <div className="mb-6">
             <h2 className="text-xl font-semibold mb-4">Products ({productCount})</h2>
-            
+
             {vroom.products && vroom.products.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="vroom-products-grid">
                 {vroom.products.map((product) => (
