@@ -395,10 +395,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/vrooms/trending', async (req, res) => {
     try {
       const vrooms = await storage.getTrendingVrooms();
-      res.json(vrooms);
+
+      const vroomsWithStats = await Promise.all(
+        vrooms.map(async (vroom) => {
+          const followersCount = await storage.getVroomFollowersCount(vroom.id);
+          const productsCount = await storage.getVroomProductsCount(vroom.id);
+          const user = await storage.getUser(vroom.userId);
+          return { ...vroom, followersCount, productsCount, user };
+        })
+      );
+      res.json(vroomsWithStats);
+        } catch (error) {
+          console.error("Error fetching trending vrooms:", error);
+          res.status(500).json({ message: "Failed to fetch trending vrooms" });
+        }
+      });
+  app.get('/api/vrooms/popular', async (req, res) => {
+    try {
+      const vrooms = await storage.getPopularVrooms();
+
+      const vroomsWithStats = await Promise.all(
+        vrooms.map(async (vroom) => {
+          const followersCount = await storage.getVroomFollowersCount(vroom.id);
+          const productsCount = await storage.getVroomProductsCount(vroom.id);
+          const user = await storage.getUser(vroom.userId);
+          return { ...vroom, followersCount, productsCount, user };
+        })
+      );
+
+      res.json(vroomsWithStats);
     } catch (error) {
-      console.error("Error fetching trending vrooms:", error);
-      res.status(500).json({ message: "Failed to fetch trending vrooms" });
+      console.error("Error fetching popular vrooms:", error);
+      res.status(500).json({ message: "Failed to fetch popular vrooms" });
     }
   });
 

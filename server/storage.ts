@@ -10,7 +10,6 @@ import {
   follows,
   vroomFollows,
   messages,
-  imageBucket,
   type User,
   type UpsertUser,
   type UpdateProfile,
@@ -22,27 +21,20 @@ import {
   type InsertOrder,
   type Message,
   type InsertMessage,
-  type ImageBucket,
-  type InsertImageBucket,
   type CartItem,
   type InsertProductComment,
   type ProductComment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, like, ilike, not, inArray, isNull } from "drizzle-orm";
-import bcrypt from "bcrypt";
+import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  createUserWithPassword(userData: any): Promise<User>;
-  verifyPassword(email: string, password: string): Promise<User | null>;
-  updatePassword(userId: string, newPassword: string): Promise<void>;
   updateProfile(userId: string, profile: UpdateProfile): Promise<User>;
   getUserProfile(userId: string): Promise<{ user: User; followers: number; following: number } | undefined>;
-  
+
   // Product operations
   createProduct(userId: string, product: InsertProduct): Promise<Product>;
   getProducts(limit?: number, offset?: number): Promise<Product[]>;
@@ -52,7 +44,7 @@ export interface IStorage {
   getTrendingProducts(): Promise<Product[]>;
   searchProducts(query: string): Promise<Product[]>;
   incrementProductViews(productId: string): Promise<void>;
-  
+
   // Product interactions
   likeProduct(userId: string, productId: string): Promise<void>;
   unlikeProduct(userId: string, productId: string): Promise<void>;
@@ -60,7 +52,7 @@ export interface IStorage {
   getProductComments(productId: string): Promise<(ProductComment & { user: User; replies: (ProductComment & { user: User })[] })[]>;
   shareProduct(userId: string, productId: string): Promise<void>;
   getProductStats(productId: string): Promise<{ likes: number; comments: number; shares: number }>;
-  
+
   // Vroom operations
   createVroom(userId: string, vroom: InsertVroom): Promise<Vroom>;
   getVrooms(limit?: number): Promise<Vroom[]>;
@@ -69,42 +61,36 @@ export interface IStorage {
   getTrendingVrooms(): Promise<Vroom[]>;
   followVroom(userId: string, vroomId: string): Promise<void>;
   unfollowVroom(userId: string, vroomId: string): Promise<void>;
-  
+  getVroomFollowersCount(vroomId: string): Promise<number>;
+  getVroomProductsCount(vroomId: string): Promise<number>;
+
   // Cart operations
   addToCart(userId: string, productId: string, quantity?: number): Promise<void>;
   removeFromCart(userId: string, productId: string): Promise<void>;
   getCartItems(userId: string): Promise<CartItem[]>;
   clearCart(userId: string): Promise<void>;
-  
+
   // Order operations
   createOrder(buyerId: string, order: InsertOrder): Promise<Order>;
   getOrders(userId: string): Promise<Order[]>;
   getOrder(id: string): Promise<Order | undefined>;
   updateOrderStatus(orderId: string, status: string): Promise<void>;
-  
+
   // Message operations
   sendMessage(senderId: string, message: InsertMessage): Promise<Message>;
   getMessages(userId1: string, userId2: string): Promise<Message[]>;
   getConversations(userId: string): Promise<any[]>;
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
-  
+
   // Follow operations
   followUser(followerId: string, followingId: string): Promise<void>;
   unfollowUser(followerId: string, followingId: string): Promise<void>;
   getFollowers(userId: string): Promise<User[]>;
   getFollowing(userId: string): Promise<User[]>;
-  
+
   // Search operations
   searchUsers(query: string, excludeUserId: string): Promise<User[]>;
   searchVrooms(query: string): Promise<Vroom[]>;
-
-  // Image bucket operations
-  uploadImage(userId: string, image: InsertImageBucket): Promise<ImageBucket>;
-  getImagesByUser(userId: string): Promise<ImageBucket[]>;
-  getImageForOwner(imageId: string, userId: string): Promise<ImageBucket | undefined>;
-  getPublicImage(imageId: string): Promise<ImageBucket | undefined>;
-  deleteImage(imageId: string, userId: string): Promise<void>;
-  updateImageMetadata(imageId: string, userId: string, metadata: Partial<InsertImageBucket>): Promise<ImageBucket>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -114,73 +100,21 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
-  }
-
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
-          ...userData,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         },
       })
       .returning();
     return user;
-  }
-
-  async createUserWithPassword(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    username?: string;
-    bannerImageUrl?: string;
-    bio?: string;
-    location?: string;
-    website?: string;
-  }): Promise<User> {
-    // Hash the password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
-
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...userData,
-        password: hashedPassword,
-      })
-      .returning();
-    return user;
-  }
-
-  async verifyPassword(email: string, password: string): Promise<User | null> {
-    const user = await this.getUserByEmail(email);
-    if (!user || !user.password) {
-      return null;
-    }
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return null;
-    }
-
-    return user;
-  }
-
-  async updatePassword(userId: string, newPassword: string): Promise<void> {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    await db
-      .update(users)
-      .set({ password: hashedPassword, updatedAt: new Date() })
-      .where(eq(users.id, userId));
   }
 
   async updateProfile(userId: string, profile: UpdateProfile): Promise<User> {
@@ -207,7 +141,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(follows.followerId, userId));
 
     return {
-      user: { ...user, password: null }, // Hide password in public profile
+      user,
       followers: Number(followersResult.count),
       following: Number(followingResult.count),
     };
@@ -326,13 +260,13 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(productComments.userId, users.id))
       .where(and(
         eq(productComments.productId, productId),
-        isNull(productComments.parentCommentId) // Only top-level comments
+        eq(productComments.parentCommentId, null) // Only top-level comments
       ))
       .orderBy(desc(productComments.createdAt));
 
     // Get all replies for these comments
     const commentIds = topLevelComments.map(row => row.product_comments.id);
-    
+
     let replies: any[] = [];
     if (commentIds.length > 0) {
       replies = await db
@@ -357,7 +291,7 @@ export class DatabaseStorage implements IStorage {
     // Combine comments with their replies
     return topLevelComments.map(row => ({
       ...row.product_comments,
-      user: row.users || { id: '', email: null, password: null, firstName: null, lastName: null, profileImageUrl: null, bannerImageUrl: null, username: null, bio: null, location: null, website: null, createdAt: null, updatedAt: null },
+      user: row.users,
       replies: repliesByParent[row.product_comments.id] || []
     }));
   }
@@ -420,8 +354,8 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(vrooms.createdAt));
   }
 
-  async getTrendingVrooms(): Promise<Vroom[]> {
-    return await db
+  async getTrendingVrooms(): Promise<(Vroom & { followersCount: number; productsCount: number })[]> {
+    const result = await db
       .select({
         id: vrooms.id,
         userId: vrooms.userId,
@@ -431,14 +365,52 @@ export class DatabaseStorage implements IStorage {
         isPublic: vrooms.isPublic,
         createdAt: vrooms.createdAt,
         updatedAt: vrooms.updatedAt,
+        followersCount: sql<number>`COUNT(DISTINCT ${vroomFollows.userId})`.as("followersCount"),
+        productsCount: sql<number>`COUNT(DISTINCT ${products.id})`.as("productsCount"),
       })
       .from(vrooms)
       .leftJoin(vroomFollows, eq(vrooms.id, vroomFollows.vroomId))
+      .leftJoin(products, eq(vrooms.id, products.vroomId))
       .where(eq(vrooms.isPublic, true))
       .groupBy(vrooms.id)
-      .orderBy(desc(sql`count(${vroomFollows.id})`))
+      .orderBy(desc(sql`COUNT(DISTINCT ${vroomFollows.userId})`)) // most followed first
       .limit(10);
+
+    return result.map((row: any) => ({
+      ...row,
+      followersCount: Number(row.followersCount),
+      productsCount: Number(row.productsCount),
+    }));
   }
+  async getPopularVrooms(): Promise<(Vroom & { followersCount: number; productsCount: number })[]> {
+    const result = await db
+      .select({
+        id: vrooms.id,
+        userId: vrooms.userId,
+        name: vrooms.name,
+        description: vrooms.description,
+        coverImageUrl: vrooms.coverImageUrl,
+        isPublic: vrooms.isPublic,
+        createdAt: vrooms.createdAt,
+        updatedAt: vrooms.updatedAt,
+        followersCount: sql<number>`COUNT(DISTINCT ${vroomFollows.userId})`.as("followersCount"),
+        productsCount: sql<number>`COUNT(DISTINCT ${products.id})`.as("productsCount"),
+      })
+      .from(vrooms)
+      .leftJoin(vroomFollows, eq(vrooms.id, vroomFollows.vroomId))
+      .leftJoin(products, eq(vrooms.id, products.vroomId))
+      .where(eq(vrooms.isPublic, true))
+      .groupBy(vrooms.id)
+      .orderBy(desc(sql`COUNT(DISTINCT ${vroomFollows.userId}) + COUNT(DISTINCT ${products.id})`)) // combo metric
+      .limit(10);
+
+    return result.map((row: any) => ({
+      ...row,
+      followersCount: Number(row.followersCount),
+      productsCount: Number(row.productsCount),
+    }));
+  }
+
 
   async followVroom(userId: string, vroomId: string): Promise<void> {
     await db.insert(vroomFollows).values({ userId, vroomId }).onConflictDoNothing();
@@ -450,13 +422,31 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(vroomFollows.userId, userId), eq(vroomFollows.vroomId, vroomId)));
   }
 
+  async getVroomFollowersCount(vroomId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(vroomFollows)
+      .where(eq(vroomFollows.vroomId, vroomId));
+    
+    return Number(result.count);
+  }
+
+  async getVroomProductsCount(vroomId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(products)
+      .where(eq(products.vroomId, vroomId));
+    
+    return Number(result.count);
+  }
+
   async deleteVroom(id: string, userId: string): Promise<void> {
     // First remove vroom reference from products
     await db
       .update(products)
       .set({ vroomId: null })
       .where(eq(products.vroomId, id));
-    
+
     // Then delete the vroom (only if user owns it)
     await db
       .delete(vrooms)
@@ -469,7 +459,7 @@ export class DatabaseStorage implements IStorage {
     if (!vroom || vroom.userId !== userId) {
       throw new Error("Vroom not found or access denied");
     }
-    
+
     // Update the product's vroom
     await db
       .update(products)
@@ -483,7 +473,7 @@ export class DatabaseStorage implements IStorage {
     if (!vroom || vroom.userId !== userId) {
       throw new Error("Vroom not found or access denied");
     }
-    
+
     // Remove the product from the vroom
     await db
       .update(products)
@@ -504,7 +494,7 @@ export class DatabaseStorage implements IStorage {
     if (!product || !product.vroomId) {
       return [];
     }
-    
+
     const vroom = await this.getVroom(product.vroomId);
     return vroom ? [vroom] : [];
   }
@@ -590,17 +580,6 @@ export class DatabaseStorage implements IStorage {
 
   // Message operations
   async sendMessage(senderId: string, message: InsertMessage): Promise<Message> {
-    // Validate that the receiver exists
-    const receiver = await this.getUser(message.receiverId);
-    if (!receiver) {
-      throw new Error("Receiver not found");
-    }
-    
-    // Prevent users from sending messages to themselves
-    if (senderId === message.receiverId) {
-      throw new Error("Cannot send message to yourself");
-    }
-
     const [newMessage] = await db
       .insert(messages)
       .values({ ...message, senderId })
@@ -646,7 +625,7 @@ export class DatabaseStorage implements IStorage {
 
   async searchUsers(query: string, excludeUserId: string): Promise<User[]> {
     const searchTerm = `%${query.toLowerCase()}%`;
-    
+
     return await db
       .select()
       .from(users)
@@ -680,7 +659,6 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: users.id,
         email: users.email,
-        password: sql<string | null>`null`, // Hide password for public data
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
@@ -702,7 +680,6 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: users.id,
         email: users.email,
-        password: sql<string | null>`null`, // Hide password for public data
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
@@ -717,54 +694,6 @@ export class DatabaseStorage implements IStorage {
       .from(follows)
       .innerJoin(users, eq(follows.followingId, users.id))
       .where(eq(follows.followerId, userId));
-  }
-
-  // Image bucket operations
-  async uploadImage(userId: string, image: InsertImageBucket): Promise<ImageBucket> {
-    const [newImage] = await db
-      .insert(imageBucket)
-      .values({ ...image, userId })
-      .returning();
-    return newImage;
-  }
-
-  async getImagesByUser(userId: string): Promise<ImageBucket[]> {
-    return await db
-      .select()
-      .from(imageBucket)
-      .where(eq(imageBucket.userId, userId))
-      .orderBy(desc(imageBucket.createdAt));
-  }
-
-  async getImageForOwner(imageId: string, userId: string): Promise<ImageBucket | undefined> {
-    const [image] = await db
-      .select()
-      .from(imageBucket)
-      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.userId, userId)));
-    return image;
-  }
-
-  async getPublicImage(imageId: string): Promise<ImageBucket | undefined> {
-    const [image] = await db
-      .select()
-      .from(imageBucket)
-      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.isPublic, true)));
-    return image;
-  }
-
-  async deleteImage(imageId: string, userId: string): Promise<void> {
-    await db
-      .delete(imageBucket)
-      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.userId, userId)));
-  }
-
-  async updateImageMetadata(imageId: string, userId: string, metadata: Partial<InsertImageBucket>): Promise<ImageBucket> {
-    const [updatedImage] = await db
-      .update(imageBucket)
-      .set({ ...metadata, updatedAt: new Date() })
-      .where(and(eq(imageBucket.id, imageId), eq(imageBucket.userId, userId)))
-      .returning();
-    return updatedImage;
   }
 }
 
