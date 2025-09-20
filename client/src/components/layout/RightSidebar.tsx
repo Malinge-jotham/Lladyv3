@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FaSearch, FaChartLine, FaStore } from "react-icons/fa";
 import { useState } from "react";
+import { Link } from "wouter";
 
 export default function RightSidebar() {
   const { data: trendingVrooms, isLoading: vroomsLoading } = useQuery({
@@ -82,18 +83,20 @@ export default function RightSidebar() {
                 </div>
               ) : trendingHashtags && trendingHashtags.length > 0 ? (
                 trendingHashtags.map((item: any) => (
-                  <div
+                  <Link
                     key={item.tag}
-                    className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex justify-between items-center"
+                    href={`/hashtags/${encodeURIComponent(item.tag)}`}
                   >
-                    <div>
-                      <p className="font-medium">{item.tag}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.count} products
-                      </p>
+                    <div className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{item.tag}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.count} products
+                        </p>
+                      </div>
+                      <FaChartLine className="text-accent" />
                     </div>
-                    <FaChartLine className="text-accent" />
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <p className="p-4 text-center text-muted-foreground">
@@ -121,41 +124,41 @@ export default function RightSidebar() {
                 trendingVrooms.slice(0, 3).map((vroom: any) => {
                   const isFollowing = followingStates[vroom.id] || false;
                   return (
-                    <div
-                      key={vroom.id}
-                      className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-3">
-                        {vroom.coverImageUrl ? (
-                          <img
-                            src={vroom.coverImageUrl}
-                            alt={vroom.name}
-                            className="w-10 h-10 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                            <FaStore className="text-muted-foreground" />
+                    <Link key={vroom.id} href={`/vrooms/${vroom.id}`}>
+                      <div className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {vroom.coverImageUrl ? (
+                            <img
+                              src={vroom.coverImageUrl}
+                              alt={vroom.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                              <FaStore className="text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium">{vroom.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatCount(vroom.productsCount || 0)} products •{" "}
+                              {formatCount(vroom.followersCount || 0)} followers
+                            </p>
                           </div>
-                        )}
-                        <div className="flex-1">
-                          <p className="font-medium">{vroom.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatCount(vroom.productsCount || 0)} products •{" "}
-                            {formatCount(vroom.followersCount || 0)} followers
-                          </p>
                         </div>
+                        <Button
+                          size="sm"
+                          variant={isFollowing ? "outline" : "default"}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleFollowToggle(vroom.id);
+                          }}
+                        >
+                          {isFollowing ? "Following" : "Follow"}
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant={isFollowing ? "outline" : "default"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFollowToggle(vroom.id);
-                        }}
-                      >
-                        {isFollowing ? "Following" : "Follow"}
-                      </Button>
-                    </div>
+                    </Link>
                   );
                 })
               ) : (
@@ -170,7 +173,7 @@ export default function RightSidebar() {
 
       {/* Footer */}
       <div className="py-4 border-t border-border mt-auto text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Eldady Mart. All Rights Reserved.
+        © {new Date().getFullYear()} Eldady . All Rights Reserved.
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import CreateVroomModal from "@/components/vroom/CreateVroomModal";
 import { FaHome, FaCompass, FaFire, FaStore, FaComments, FaUser, FaShoppingCart, FaPlus, FaShoppingBag } from "react-icons/fa";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import logo from "@/assets/ELDADY-LOGO.png";
 
 const navigationItems = [
   { path: "/", icon: FaHome, label: "Home", testId: "nav-home" },
@@ -51,13 +52,13 @@ export default function Sidebar() {
       <div className="w-64 bg-card border-r border-border p-6 fixed h-full overflow-y-auto" data-testid="sidebar">
         <div className="space-y-6">
           {/* Logo */}
-          <div className="flex items-center space-x-3" data-testid="sidebar-logo">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <FaShoppingBag className="text-primary-foreground text-sm" />
-            </div>
-            <h1 className="text-xl font-bold text-primary">Eldady</h1>
-          </div>
+          <img 
+            src={logo} 
+            alt="Eldady Logo" 
+            className="w-24 h-auto object-contain"
+          />
 
+         
           {/* Navigation */}
           <nav className="space-y-2" data-testid="sidebar-navigation">
             {navigationItems.map((item) => {
