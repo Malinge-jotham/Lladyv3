@@ -118,24 +118,21 @@ export default function CheckoutModal({ isOpen, onClose, cartItems }: CheckoutMo
         }
       });
 
-      // Create orders for each seller and send messages
+      // Create separate orders for each product and send messages
       for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
-        // Create order for this seller's items
-        const orderResponse = await createOrderMutation.mutateAsync({
-          sellerId,
-          items: sellerItems.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.product.price
-          })),
-          totalAmount: sellerItems.reduce((total, item) => 
-            total + (parseFloat(item.product.price) * item.quantity), 0
-          ).toString(),
-          shippingAddress,
-        });
+        // Create separate order for each product
+        for (const item of sellerItems) {
+          if (item.product) {
+            const orderResponse = await createOrderMutation.mutateAsync({
+              sellerId,
+              productId: item.productId,
+              quantity: item.quantity,
+              totalAmount: (parseFloat(item.product.price) * item.quantity).toString(),
+              shippingAddress,
+            });
 
-        // Send message to seller
-        const sellerMessage = `
+            // Send message to seller for this specific product order
+            const sellerMessage = `
 New Order Received!
 
 Customer: ${user?.name || user?.email}
@@ -143,26 +140,21 @@ Shipping Address:
 ${shippingAddress.streetAddress}
 ${shippingAddress.city}, ${shippingAddress.country}
 
-Order Details:
-${sellerItems.map(item => `
-- ${item.product.name} × ${item.quantity}
-  Price: $${item.product.price} each
-  Total: $${(parseFloat(item.product.price) * item.quantity).toFixed(2)}
-`).join('')}
-
-Total Order Amount: $${sellerItems.reduce((total, item) => 
-  total + (parseFloat(item.product.price) * item.quantity), 0
-).toFixed(2)}
+Product: ${item.product.name} × ${item.quantity}
+Price: $${item.product.price} each
+Total: $${(parseFloat(item.product.price) * item.quantity).toFixed(2)}
 
 Order ID: ${orderResponse.id}
 Please contact the customer to arrange delivery and payment.
-        `.trim();
+            `.trim();
 
-        await sendMessageMutation.mutateAsync({
-          receiverId: sellerId,
-          content: sellerMessage,
-          type: 'order_notification'
-        });
+            await sendMessageMutation.mutateAsync({
+              receiverId: sellerId,
+              content: sellerMessage,
+              type: 'order_notification'
+            });
+          }
+        }
       }
 
       // Send confirmation message to buyer
