@@ -149,6 +149,16 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Product bookmarks
+export const bookmarks = pgTable("bookmarks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  uniqueUserProduct: unique().on(table.userId, table.productId),
+}));
+
 // Image bucket for uploaded images
 export const imageBucket = pgTable("image_bucket", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -372,3 +382,5 @@ export type ProductComment = typeof productComments.$inferSelect;
 export type InsertImageBucket = z.infer<typeof insertImageBucketSchema>;
 export type ImageBucket = typeof imageBucket.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
+export type Bookmark = typeof bookmarks.$inferSelect;
+export type InsertBookmark = typeof bookmarks.$inferInsert;
