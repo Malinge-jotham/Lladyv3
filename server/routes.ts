@@ -575,6 +575,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+  /* ------------------ BOOKMARK ROUTES ------------------ */
+
+  // Bookmark a product
+  app.post("/api/products/:id/bookmark", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.bookmarkProduct(userId, req.params.id);
+      res.status(200).json({ message: "Product bookmarked" });
+    } catch (error) {
+      console.error("Error bookmarking product:", error);
+      res.status(500).json({ message: "Failed to bookmark product" });
+    }
+  });
+
+  // Remove bookmark
+  app.delete("/api/products/:id/bookmark", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.unbookmarkProduct(userId, req.params.id);
+      res.status(200).json({ message: "Product unbookmarked" });
+    } catch (error) {
+      console.error("Error unbookmarking product:", error);
+      res.status(500).json({ message: "Failed to unbookmark product" });
+    }
+  });
+
+  // Get user's bookmarked products
+  app.get("/api/products/bookmarked", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookmarked = await storage.getBookmarkedProducts(userId);
+      res.json(bookmarked);
+    } catch (error) {
+      console.error("Error fetching bookmarked products:", error);
+      res.status(500).json({ message: "Failed to fetch bookmarked products" });
+    }
+  });
+
 
   // Cart routes
   app.get('/api/cart', isAuthenticated, async (req: any, res) => {

@@ -10,6 +10,7 @@ import {
   follows,
   vroomFollows,
   messages,
+  bookmarks,
   type User,
   type UpsertUser,
   type UpdateProfile,
@@ -24,6 +25,8 @@ import {
   type CartItem,
   type InsertProductComment,
   type ProductComment,
+  type Bookmark,
+  type InsertBookmark,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
@@ -48,10 +51,18 @@ export interface IStorage {
   // Product interactions
   likeProduct(userId: string, productId: string): Promise<void>;
   unlikeProduct(userId: string, productId: string): Promise<void>;
+  isProductLiked(userId: string, productId: string): Promise<boolean>;
   commentOnProduct(userId: string, productId: string, content: string, parentCommentId?: string): Promise<ProductComment>;
   getProductComments(productId: string): Promise<(ProductComment & { user: User; replies: (ProductComment & { user: User })[] })[]>;
   shareProduct(userId: string, productId: string): Promise<void>;
   getProductStats(productId: string): Promise<{ likes: number; comments: number; shares: number }>;
+
+  // Bookmark operations
+  bookmarkProduct(userId: string, productId: string): Promise<void>;
+  unbookmarkProduct(userId: string, productId: string): Promise<void>;
+  isProductBookmarked(userId: string, productId: string): Promise<boolean>;
+  getBookmarks(userId: string): Promise<(Bookmark & { product: Product & { user: User } })[]>;
+  getBookmarkCount(productId: string): Promise<number>;
 
   // Vroom operations
   createVroom(userId: string, vroom: InsertVroom): Promise<Vroom>;
@@ -61,8 +72,18 @@ export interface IStorage {
   getTrendingVrooms(): Promise<Vroom[]>;
   followVroom(userId: string, vroomId: string): Promise<void>;
   unfollowVroom(userId: string, vroomId: string): Promise<void>;
+  isVroomFollowed(userId: string, vroomId: string): Promise<boolean>;
   getVroomFollowersCount(vroomId: string): Promise<number>;
   getVroomProductsCount(vroomId: string): Promise<number>;
+  getPopularVrooms(): Promise<Vroom[]>;
+  getVroomStats(vroomId: string): Promise<{ followers: number; products: number }>;
+  deleteVroom(vroomId: string, userId: string): Promise<void>;
+  addProductToVroom(productId: string, vroomId: string): Promise<void>;
+  removeProductFromVroom(productId: string, vroomId: string): Promise<void>;
+  getVroomsByProduct(productId: string): Promise<Vroom[]>;
+  getBookmarkedProducts(userId: string): Promise<Product[]>;
+  findConversation(userId1: string, userId2: string): Promise<any>;
+  createConversation(userId1: string, userId2: string): Promise<any>;
 
   // Cart operations
   addToCart(userId: string, productId: string, quantity?: number): Promise<void>;
@@ -85,8 +106,11 @@ export interface IStorage {
   // Follow operations
   followUser(followerId: string, followingId: string): Promise<void>;
   unfollowUser(followerId: string, followingId: string): Promise<void>;
+  isUserFollowing(followerId: string, followingId: string): Promise<boolean>;
   getFollowers(userId: string): Promise<User[]>;
   getFollowing(userId: string): Promise<User[]>;
+  getFollowersCount(userId: string): Promise<number>;
+  getFollowingCount(userId: string): Promise<number>;
 
   // Search operations
   searchUsers(query: string, excludeUserId: string): Promise<User[]>;
@@ -130,20 +154,13 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUser(userId);
     if (!user) return undefined;
 
-    const [followersResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(follows)
-      .where(eq(follows.followingId, userId));
-
-    const [followingResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(follows)
-      .where(eq(follows.followerId, userId));
+    const followersCount = await this.getFollowersCount(userId);
+    const followingCount = await this.getFollowingCount(userId);
 
     return {
       user,
-      followers: Number(followersResult.count),
-      following: Number(followingResult.count),
+      followers: followersCount,
+      following: followingCount,
     };
   }
 
@@ -179,6 +196,13 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
+  async getProductsByVroom(vroomId: string): Promise<Product[]> {
+    return await db
+      .select()
+      .from(products)
+      .where(eq(products.vroomId, vroomId))
+      .orderBy(desc(products.createdAt));
+  }
 
   async getTrendingProducts(): Promise<Product[]> {
     return await db
@@ -206,24 +230,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
-
-  async searchVrooms(query: string): Promise<Vroom[]> {
-    return await db
-      .select()
-      .from(vrooms)
-      .where(
-        and(
-          eq(vrooms.isPublic, true),
-          or(
-            like(vrooms.name, `%${query}%`),
-            like(vrooms.description, `%${query}%`)
-          )
-        )
-      )
-      .orderBy(desc(vrooms.createdAt))
-      .limit(20);
-  }
-
   async incrementProductViews(productId: string): Promise<void> {
     await db
       .update(products)
@@ -231,7 +237,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, productId));
   }
 
-  // Product interactions
+  // Product interactions - Likes
   async likeProduct(userId: string, productId: string): Promise<void> {
     await db.insert(productLikes).values({ userId, productId }).onConflictDoNothing();
   }
@@ -242,6 +248,15 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(productLikes.userId, userId), eq(productLikes.productId, productId)));
   }
 
+  async isProductLiked(userId: string, productId: string): Promise<boolean> {
+    const [like] = await db
+      .select()
+      .from(productLikes)
+      .where(and(eq(productLikes.userId, userId), eq(productLikes.productId, productId)));
+    return !!like;
+  }
+
+  // Product interactions - Comments
   async commentOnProduct(userId: string, productId: string, content: string, parentCommentId?: string): Promise<ProductComment> {
     const [comment] = await db.insert(productComments).values({ 
       userId, 
@@ -323,6 +338,56 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // Bookmark operations
+  async bookmarkProduct(userId: string, productId: string): Promise<void> {
+    await db.insert(bookmarks).values({ userId, productId }).onConflictDoNothing();
+  }
+
+  async unbookmarkProduct(userId: string, productId: string): Promise<void> {
+    await db
+      .delete(bookmarks)
+      .where(and(eq(bookmarks.userId, userId), eq(bookmarks.productId, productId)));
+  }
+
+  async isProductBookmarked(userId: string, productId: string): Promise<boolean> {
+    const [bookmark] = await db
+      .select()
+      .from(bookmarks)
+      .where(and(eq(bookmarks.userId, userId), eq(bookmarks.productId, productId)));
+    return !!bookmark;
+  }
+
+  async getBookmarks(userId: string): Promise<(Bookmark & { product: Product & { user: User } })[]> {
+    const result = await db
+      .select({
+        bookmark: bookmarks,
+        product: products,
+        user: users,
+      })
+      .from(bookmarks)
+      .innerJoin(products, eq(bookmarks.productId, products.id))
+      .innerJoin(users, eq(products.userId, users.id))
+      .where(eq(bookmarks.userId, userId))
+      .orderBy(desc(bookmarks.createdAt));
+
+    return result.map(row => ({
+      ...row.bookmark,
+      product: {
+        ...row.product,
+        user: row.user
+      }
+    }));
+  }
+
+  async getBookmarkCount(productId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(bookmarks)
+      .where(eq(bookmarks.productId, productId));
+
+    return Number(result.count);
+  }
+
   // Vroom operations
   async createVroom(userId: string, vroom: InsertVroom): Promise<Vroom> {
     const [newVroom] = await db
@@ -382,36 +447,8 @@ export class DatabaseStorage implements IStorage {
       productsCount: Number(row.productsCount),
     }));
   }
-  async getPopularVrooms(): Promise<(Vroom & { followersCount: number; productsCount: number })[]> {
-    const result = await db
-      .select({
-        id: vrooms.id,
-        userId: vrooms.userId,
-        name: vrooms.name,
-        description: vrooms.description,
-        coverImageUrl: vrooms.coverImageUrl,
-        isPublic: vrooms.isPublic,
-        createdAt: vrooms.createdAt,
-        updatedAt: vrooms.updatedAt,
-        followersCount: sql<number>`COUNT(DISTINCT ${vroomFollows.userId})`.as("followersCount"),
-        productsCount: sql<number>`COUNT(DISTINCT ${products.id})`.as("productsCount"),
-      })
-      .from(vrooms)
-      .leftJoin(vroomFollows, eq(vrooms.id, vroomFollows.vroomId))
-      .leftJoin(products, eq(vrooms.id, products.vroomId))
-      .where(eq(vrooms.isPublic, true))
-      .groupBy(vrooms.id)
-      .orderBy(desc(sql`COUNT(DISTINCT ${vroomFollows.userId}) + COUNT(DISTINCT ${products.id})`)) // combo metric
-      .limit(10);
 
-    return result.map((row: any) => ({
-      ...row,
-      followersCount: Number(row.followersCount),
-      productsCount: Number(row.productsCount),
-    }));
-  }
-
-
+  // Vroom follow operations
   async followVroom(userId: string, vroomId: string): Promise<void> {
     await db.insert(vroomFollows).values({ userId, vroomId }).onConflictDoNothing();
   }
@@ -422,12 +459,20 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(vroomFollows.userId, userId), eq(vroomFollows.vroomId, vroomId)));
   }
 
+  async isVroomFollowed(userId: string, vroomId: string): Promise<boolean> {
+    const [follow] = await db
+      .select()
+      .from(vroomFollows)
+      .where(and(eq(vroomFollows.userId, userId), eq(vroomFollows.vroomId, vroomId)));
+    return !!follow;
+  }
+
   async getVroomFollowersCount(vroomId: string): Promise<number> {
     const [result] = await db
       .select({ count: sql<number>`count(*)` })
       .from(vroomFollows)
       .where(eq(vroomFollows.vroomId, vroomId));
-    
+
     return Number(result.count);
   }
 
@@ -436,89 +481,159 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(products)
       .where(eq(products.vroomId, vroomId));
-    
+
     return Number(result.count);
   }
 
-  async deleteVroom(id: string, userId: string): Promise<void> {
-    // First remove vroom reference from products
-    await db
-      .update(products)
-      .set({ vroomId: null })
-      .where(eq(products.vroomId, id));
-
-    // Then delete the vroom (only if user owns it)
-    await db
-      .delete(vrooms)
-      .where(and(eq(vrooms.id, id), eq(vrooms.userId, userId)));
+  async getPopularVrooms(): Promise<Vroom[]> {
+    return await db
+      .select()
+      .from(vrooms)
+      .where(eq(vrooms.isPublic, true))
+      .orderBy(desc(vrooms.createdAt))
+      .limit(10);
   }
 
-  async addProductToVroom(productId: string, vroomId: string, userId: string): Promise<void> {
-    // Verify the user owns the vroom
-    const vroom = await this.getVroom(vroomId);
-    if (!vroom || vroom.userId !== userId) {
-      throw new Error("Vroom not found or access denied");
-    }
+  async getVroomStats(vroomId: string): Promise<{ followers: number; products: number }> {
+    const followers = await this.getVroomFollowersCount(vroomId);
+    const products = await this.getVroomProductsCount(vroomId);
+    return { followers, products };
+  }
 
-    // Update the product's vroom
+  async addProductToVroom(productId: string, vroomId: string): Promise<void> {
     await db
       .update(products)
       .set({ vroomId })
       .where(eq(products.id, productId));
   }
 
-  async removeProductFromVroom(productId: string, vroomId: string, userId: string): Promise<void> {
-    // Verify the user owns the vroom
-    const vroom = await this.getVroom(vroomId);
-    if (!vroom || vroom.userId !== userId) {
-      throw new Error("Vroom not found or access denied");
-    }
-
-    // Remove the product from the vroom
+  async removeProductFromVroom(productId: string, vroomId: string): Promise<void> {
     await db
       .update(products)
       .set({ vroomId: null })
       .where(and(eq(products.id, productId), eq(products.vroomId, vroomId)));
   }
 
-  async getProductsByVroom(vroomId: string): Promise<Product[]> {
-    return await db
-      .select()
-      .from(products)
-      .where(eq(products.vroomId, vroomId))
-      .orderBy(desc(products.createdAt));
-  }
-
   async getVroomsByProduct(productId: string): Promise<Vroom[]> {
     const product = await this.getProduct(productId);
-    if (!product || !product.vroomId) {
-      return [];
-    }
-
+    if (!product || !product.vroomId) return [];
+    
     const vroom = await this.getVroom(product.vroomId);
     return vroom ? [vroom] : [];
   }
 
-  async getVroomStats(vroomId: string, userId?: string): Promise<{ followers: number; views: number; isFollowing: boolean }> {
-    const [followersResult] = await db
+  async getBookmarkedProducts(userId: string): Promise<Product[]> {
+    const result = await db
+      .select({
+        id: products.id,
+        userId: products.userId,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        imageUrl: products.imageUrl,
+        category: products.category,
+        vroomId: products.vroomId,
+        hashtags: products.hashtags,
+        isAvailable: products.isAvailable,
+        views: products.views,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+      })
+      .from(products)
+      .innerJoin(bookmarks, eq(bookmarks.productId, products.id))
+      .where(eq(bookmarks.userId, userId))
+      .orderBy(desc(bookmarks.createdAt));
+    
+    return result;
+  }
+
+  async findConversation(userId1: string, userId2: string): Promise<any> {
+    // Simple conversation logic - return a unique conversation ID
+    const conversationId = [userId1, userId2].sort().join('_');
+    return { id: conversationId, participants: [userId1, userId2] };
+  }
+
+  async createConversation(userId1: string, userId2: string): Promise<any> {
+    return this.findConversation(userId1, userId2);
+  }
+
+  // User follow operations
+  async followUser(followerId: string, followingId: string): Promise<void> {
+    await db.insert(follows).values({ followerId, followingId }).onConflictDoNothing();
+  }
+
+  async unfollowUser(followerId: string, followingId: string): Promise<void> {
+    await db
+      .delete(follows)
+      .where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
+  }
+
+  async isUserFollowing(followerId: string, followingId: string): Promise<boolean> {
+    const [follow] = await db
+      .select()
+      .from(follows)
+      .where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
+    return !!follow;
+  }
+
+  async getFollowers(userId: string): Promise<User[]> {
+    return await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        bannerImageUrl: users.bannerImageUrl,
+        username: users.username,
+        bio: users.bio,
+        location: users.location,
+        website: users.website,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(follows)
+      .innerJoin(users, eq(follows.followerId, users.id))
+      .where(eq(follows.followingId, userId));
+  }
+
+  async getFollowing(userId: string): Promise<User[]> {
+    return await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        bannerImageUrl: users.bannerImageUrl,
+        username: users.username,
+        bio: users.bio,
+        location: users.location,
+        website: users.website,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(follows)
+      .innerJoin(users, eq(follows.followingId, users.id))
+      .where(eq(follows.followerId, userId));
+  }
+
+  async getFollowersCount(userId: string): Promise<number> {
+    const [result] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(vroomFollows)
-      .where(eq(vroomFollows.vroomId, vroomId));
+      .from(follows)
+      .where(eq(follows.followingId, userId));
 
-    let isFollowing = false;
-    if (userId) {
-      const [followResult] = await db
-        .select()
-        .from(vroomFollows)
-        .where(and(eq(vroomFollows.vroomId, vroomId), eq(vroomFollows.userId, userId)));
-      isFollowing = !!followResult;
-    }
+    return Number(result.count);
+  }
 
-    return {
-      followers: Number(followersResult.count),
-      views: 0, // TODO: Implement view tracking
-      isFollowing,
-    };
+  async getFollowingCount(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(follows)
+      .where(eq(follows.followerId, userId));
+
+    return Number(result.count);
   }
 
   // Cart operations
@@ -623,6 +738,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(messages.receiverId, userId), eq(messages.senderId, senderId)));
   }
 
+  // Search operations
   async searchUsers(query: string, excludeUserId: string): Promise<User[]> {
     const searchTerm = `%${query.toLowerCase()}%`;
 
@@ -643,57 +759,21 @@ export class DatabaseStorage implements IStorage {
       .limit(10);
   }
 
-  // Follow operations
-  async followUser(followerId: string, followingId: string): Promise<void> {
-    await db.insert(follows).values({ followerId, followingId }).onConflictDoNothing();
-  }
-
-  async unfollowUser(followerId: string, followingId: string): Promise<void> {
-    await db
-      .delete(follows)
-      .where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
-  }
-
-  async getFollowers(userId: string): Promise<User[]> {
+  async searchVrooms(query: string): Promise<Vroom[]> {
     return await db
-      .select({
-        id: users.id,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profileImageUrl: users.profileImageUrl,
-        bannerImageUrl: users.bannerImageUrl,
-        username: users.username,
-        bio: users.bio,
-        location: users.location,
-        website: users.website,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      })
-      .from(follows)
-      .innerJoin(users, eq(follows.followerId, users.id))
-      .where(eq(follows.followingId, userId));
-  }
-
-  async getFollowing(userId: string): Promise<User[]> {
-    return await db
-      .select({
-        id: users.id,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profileImageUrl: users.profileImageUrl,
-        bannerImageUrl: users.bannerImageUrl,
-        username: users.username,
-        bio: users.bio,
-        location: users.location,
-        website: users.website,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      })
-      .from(follows)
-      .innerJoin(users, eq(follows.followingId, users.id))
-      .where(eq(follows.followerId, userId));
+      .select()
+      .from(vrooms)
+      .where(
+        and(
+          eq(vrooms.isPublic, true),
+          or(
+            like(vrooms.name, `%${query}%`),
+            like(vrooms.description, `%${query}%`)
+          )
+        )
+      )
+      .orderBy(desc(vrooms.createdAt))
+      .limit(20);
   }
 }
 

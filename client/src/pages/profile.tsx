@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   FaEdit, FaMapMarkerAlt, FaCalendarAlt, FaStore, FaHeart, 
   FaCamera, FaPlus, FaLink, FaGlobe, FaTwitter, FaInstagram,
-  FaUser, FaSignature
+  FaUser, FaSignature, FaBookmark, FaUserPlus
 } from "react-icons/fa";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -61,6 +61,18 @@ export default function Profile() {
       }
       return data;
     },
+  });
+
+  // Fetch user's bookmarks
+  const { data: userBookmarks, isLoading: bookmarksLoading } = useQuery({
+    queryKey: ["/api/bookmarks"],
+    enabled: !!user && activeTab === "bookmarks",
+  });
+
+  // Fetch user's following list
+  const { data: userFollowing, isLoading: followingLoading } = useQuery({
+    queryKey: ["/api/following"],
+    enabled: !!user && activeTab === "following",
   });
 
   // Edit profile form
@@ -198,9 +210,98 @@ export default function Profile() {
     following: (profileData as any)?.following || 0,
     posts: userProducts && Array.isArray(userProducts) ? userProducts.length : 0,
     vrooms: userVrooms && Array.isArray(userVrooms) ? userVrooms.length : 0,
+    bookmarks: userBookmarks && Array.isArray(userBookmarks) ? userBookmarks.length : 0,
   };
 
   const userInitial = (user as any)?.firstName?.[0] || (user as any)?.email?.[0] || '?';
+
+  // Render bookmarked products
+  const renderBookmarks = () => {
+    if (bookmarksLoading) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-80 w-full rounded-xl" />
+          ))}
+        </div>
+      );
+    }
+
+    if (userBookmarks && Array.isArray(userBookmarks) && userBookmarks.length > 0) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="user-bookmarks-grid">
+          {userBookmarks.map((bookmark: any) => (
+            <ProductCard key={bookmark.id} product={bookmark.product || bookmark} />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-bookmarks">
+        <FaBookmark className="mx-auto text-5xl mb-4 opacity-30" />
+        <h3 className="text-xl font-medium mb-2">No bookmarks yet</h3>
+        <p className="mb-6">Products you bookmark will appear here.</p>
+        <Button className="bg-primary hover:bg-primary/90">
+          Explore Products
+        </Button>
+      </div>
+    );
+  };
+
+  // Render following list
+  const renderFollowing = () => {
+    if (followingLoading) {
+      return (
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+              <Skeleton className="h-9 w-20 rounded-md" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (userFollowing && Array.isArray(userFollowing) && userFollowing.length > 0) {
+      return (
+        <div className="space-y-4" data-testid="user-following-list">
+          {userFollowing.map((followedUser: any) => (
+            <div key={followedUser.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                  {followedUser.firstName?.[0] || followedUser.email?.[0] || '?'}
+                </div>
+                <div>
+                  <h4 className="font-semibold">{followedUser.firstName} {followedUser.lastName}</h4>
+                  <p className="text-muted-foreground text-sm">@{followedUser.email?.split('@')[0]}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm">
+                Following
+              </Button>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-following">
+        <FaUserPlus className="mx-auto text-5xl mb-4 opacity-30" />
+        <h3 className="text-xl font-medium mb-2">Not following anyone yet</h3>
+        <p className="mb-6">Users you follow will appear here.</p>
+        <Button className="bg-primary hover:bg-primary/90">
+          Discover Users
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -606,111 +707,135 @@ export default function Profile() {
           </Card>
 
           {/* Content Navigation */}
-          <div className="flex border-b mb-6">
+          <div className="flex border-b mb-6 overflow-x-auto">
             <button
-              className={`px-4 py-3 font-medium text-lg ${activeTab === "products" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-4 py-3 font-medium text-lg whitespace-nowrap ${activeTab === "products" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setActiveTab("products")}
             >
               <FaHeart className="inline mr-2" />
               Products ({profileStats.posts})
             </button>
             <button
-              className={`px-4 py-3 font-medium text-lg ${activeTab === "vrooms" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-4 py-3 font-medium text-lg whitespace-nowrap ${activeTab === "vrooms" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setActiveTab("vrooms")}
             >
               <FaStore className="inline mr-2" />
               Vrooms ({profileStats.vrooms})
             </button>
+            <button
+              className={`px-4 py-3 font-medium text-lg whitespace-nowrap ${activeTab === "bookmarks" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setActiveTab("bookmarks")}
+            >
+              <FaBookmark className="inline mr-2" />
+              Bookmarks ({profileStats.bookmarks})
+            </button>
+            <button
+              className={`px-4 py-3 font-medium text-lg whitespace-nowrap ${activeTab === "following" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setActiveTab("following")}
+            >
+              <FaUserPlus className="inline mr-2" />
+              Following ({profileStats.following})
+            </button>
           </div>
 
           {/* Content Section */}
-          {activeTab === "products" ? (
-            <Card data-testid="profile-products-section" className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                {productsLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, i) => (
-                      <Skeleton key={i} className="h-80 w-full rounded-xl" />
-                    ))}
-                  </div>
-                ) : userProducts && Array.isArray(userProducts) && userProducts.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="user-products-grid">
-                    {userProducts.map((product: any) => (
-                      <ProductCard key={product.id} product={product} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-products">
-                    <FaHeart className="mx-auto text-5xl mb-4 opacity-30" />
-                    <h3 className="text-xl font-medium mb-2">No products yet</h3>
-                    <p className="mb-6">You haven't posted any products yet.</p>
-                    <Button className="bg-primary hover:bg-primary/90">
-                      Share Your First Product
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card data-testid="profile-vrooms-section" className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold">Your Vrooms</h3>
-                  <CreateVroomModal
-                    trigger={
-                      <Button 
-                        size="sm" 
-                        data-testid="button-create-vroom-profile"
-                        className="bg-primary hover:bg-primary/90"
-                      >
-                        <FaPlus className="mr-2" />
-                        Create Vroom
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-6">
+              {activeTab === "products" ? (
+                <div data-testid="profile-products-section">
+                  {productsLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[...Array(6)].map((_, i) => (
+                        <Skeleton key={i} className="h-80 w-full rounded-xl" />
+                      ))}
+                    </div>
+                  ) : userProducts && Array.isArray(userProducts) && userProducts.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="user-products-grid">
+                      {userProducts.map((product: any) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-products">
+                      <FaHeart className="mx-auto text-5xl mb-4 opacity-30" />
+                      <h3 className="text-xl font-medium mb-2">No products yet</h3>
+                      <p className="mb-6">You haven't posted any products yet.</p>
+                      <Button className="bg-primary hover:bg-primary/90">
+                        Share Your First Product
                       </Button>
-                    }
-                  />
+                    </div>
+                  )}
                 </div>
-
-                {vroomsLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-48 w-full rounded-xl" />
-                    ))}
-                  </div>
-                ) : userVrooms && Array.isArray(userVrooms) && userVrooms.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="user-vrooms-grid">
-                    {userVrooms.map((vroom: any) => (
-                      <VroomCard 
-                        key={vroom.id} 
-                        vroom={{
-                          ...vroom,
-                          user: profileData?.user,
-                          _count: vroom._count,
-                          stats: vroom.stats
-                        }} 
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-vrooms">
-                    <FaStore className="mx-auto text-5xl mb-4 opacity-30" />
-                    <h3 className="text-xl font-medium mb-2">No vrooms yet</h3>
-                    <p className="mb-6">Create your first vroom to organize your products!</p>
+              ) : activeTab === "vrooms" ? (
+                <div data-testid="profile-vrooms-section">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold">Your Vrooms</h3>
                     <CreateVroomModal
                       trigger={
                         <Button 
-                          data-testid="button-create-first-vroom"
+                          size="sm" 
+                          data-testid="button-create-vroom-profile"
                           className="bg-primary hover:bg-primary/90"
                         >
                           <FaPlus className="mr-2" />
-                          Create Your First Vroom
+                          Create Vroom
                         </Button>
                       }
                     />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+
+                  {vroomsLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-48 w-full rounded-xl" />
+                      ))}
+                    </div>
+                  ) : userVrooms && Array.isArray(userVrooms) && userVrooms.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="user-vrooms-grid">
+                      {userVrooms.map((vroom: any) => (
+                        <VroomCard 
+                          key={vroom.id} 
+                          vroom={{
+                            ...vroom,
+                            user: profileData?.user,
+                            _count: vroom._count,
+                            stats: vroom.stats
+                          }} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 text-muted-foreground" data-testid="empty-user-vrooms">
+                      <FaStore className="mx-auto text-5xl mb-4 opacity-30" />
+                      <h3 className="text-xl font-medium mb-2">No vrooms yet</h3>
+                      <p className="mb-6">Create your first vroom to organize your products!</p>
+                      <CreateVroomModal
+                        trigger={
+                          <Button 
+                            data-testid="button-create-first-vroom"
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            <FaPlus className="mr-2" />
+                            Create Your First Vroom
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : activeTab === "bookmarks" ? (
+                <div data-testid="profile-bookmarks-section">
+                  <h3 className="text-xl font-semibold mb-6">Bookmarked Products</h3>
+                  {renderBookmarks()}
+                </div>
+              ) : activeTab === "following" ? (
+                <div data-testid="profile-following-section">
+                  <h3 className="text-xl font-semibold mb-6">People You Follow</h3>
+                  {renderFollowing()}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
