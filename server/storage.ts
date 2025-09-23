@@ -530,8 +530,7 @@ export class DatabaseStorage implements IStorage {
         name: products.name,
         description: products.description,
         price: products.price,
-        imageUrl: products.imageUrl,
-        category: products.category,
+        imageUrls: products.imageUrls,
         vroomId: products.vroomId,
         hashtags: products.hashtags,
         isAvailable: products.isAvailable,
@@ -555,6 +554,13 @@ export class DatabaseStorage implements IStorage {
 
   async createConversation(userId1: string, userId2: string): Promise<any> {
     return this.findConversation(userId1, userId2);
+  }
+
+  async deleteVroom(vroomId: string, userId: string): Promise<void> {
+    // Only allow deletion if the user owns the vroom
+    await db
+      .delete(vrooms)
+      .where(and(eq(vrooms.id, vroomId), eq(vrooms.userId, userId)));
   }
 
   // User follow operations
