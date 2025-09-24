@@ -73,10 +73,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems }: CheckoutMo
 
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: any) => {
-      const response = await apiRequest("POST", "/api/messages", {
-        ...messageData,
-        senderName: "ELDADY MART"
-      });
+      const response = await apiRequest("POST", "/api/messages", messageData);
       return response.json();
     },
     onError: (error) => {
@@ -118,11 +115,11 @@ export default function CheckoutModal({ isOpen, onClose, cartItems }: CheckoutMo
         }
       });
 
-      // Create separate orders for each product and send messages
+      // Create separate orders for each product and send PRIVATE messages
       for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
-        // Create separate order for each product
         for (const item of sellerItems) {
           if (item.product) {
+            // Create order
             const orderResponse = await createOrderMutation.mutateAsync({
               sellerId,
               productId: item.productId,
@@ -131,7 +128,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems }: CheckoutMo
               shippingAddress,
             });
 
-            // Send message to seller for this specific product order
+            // Send PRIVATE order notification to seller (only visible to seller)
             const sellerMessage = `
 New Order Received!
 
@@ -149,15 +146,23 @@ Please contact the customer to arrange delivery and payment.
             `.trim();
 
             await sendMessageMutation.mutateAsync({
+              senderId: user?.id, // Buyer sends this notification
               receiverId: sellerId,
               content: sellerMessage,
-              type: 'order_notification'
+              messageType: 'order_notification', // This type is only for sellers
+              orderId: orderResponse.id,
+              metadata: {
+                orderId: orderResponse.id,
+                productName: item.product.name,
+                quantity: item.quantity,
+                totalAmount: (parseFloat(item.product.price) * item.quantity).toFixed(2)
+              }
             });
           }
         }
       }
 
-      // Send confirmation message to buyer
+      // Send PRIVATE order confirmation to buyer (only visible to buyer)
       const buyerMessage = `
 Order Confirmation!
 
@@ -178,12 +183,19 @@ ${shippingAddress.city}, ${shippingAddress.country}
 
 Your sellers will contact you shortly to arrange delivery and payment.
 Thank you for shopping with ELDADY MART!
-        `.trim();
+      `.trim();
 
+      // Use a system sender or the user themselves for the confirmation
       await sendMessageMutation.mutateAsync({
+        senderId: user?.id, // Or use a system user ID if available
         receiverId: user?.id,
         content: buyerMessage,
-        type: 'order_confirmation'
+        messageType: 'order_confirmation', // This type is only for buyers
+        metadata: {
+          orderCount: filteredCartItems.length,
+          grandTotal: calculateTotal(),
+          shippingAddress: shippingAddress
+        }
       });
 
       toast({
@@ -193,10 +205,12 @@ Thank you for shopping with ELDADY MART!
 
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/orders/buyer"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/orders/seller"] });
       handleClose();
 
     } catch (error) {
+      console.error("Checkout error:", error);
       toast({
         title: "Error",
         description: "Failed to place order. Please try again.",

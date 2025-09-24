@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
 import ShoppingCart from "@/components/cart/ShoppingCart";
 import PostProductModal from "@/components/product/PostProductModal";
-import CreateVroomModal from "@/components/vroom/CreateVroomModal";
-import { FaHome, FaCompass, FaFire, FaStore, FaComments, FaUser, FaShoppingCart, FaPlus, FaShoppingBag } from "react-icons/fa";
+import { FaHome, FaCompass, FaStore, FaComments, FaUser, FaShoppingCart, FaPlus } from "react-icons/fa";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import logo from "@/assets/ELDADY-LOGO.png";
@@ -14,7 +13,6 @@ import logo from "@/assets/ELDADY-LOGO.png";
 const navigationItems = [
   { path: "/", icon: FaHome, label: "Home", testId: "nav-home" },
   { path: "/explore", icon: FaCompass, label: "Explore", testId: "nav-explore" },
-  { path: "/trending", icon: FaFire, label: "Trending", testId: "nav-trending" },
   { path: "/vroom", icon: FaStore, label: "My Vroom", testId: "nav-vroom" }, // special handling
   { path: "/messages", icon: FaComments, label: "Messages", testId: "nav-messages" },
   { path: "/profile", icon: FaUser, label: "Profile", testId: "nav-profile" },
@@ -24,7 +22,6 @@ export default function Sidebar() {
   const [location, setLocation] = useLocation();
   const [showCart, setShowCart] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
-  const [showCreateVroom, setShowCreateVroom] = useState(false);
   const { cartItemCount } = useCart();
   const { user } = useAuth();
 
@@ -58,7 +55,7 @@ export default function Sidebar() {
             className="w-24 h-auto object-contain"
           />
 
-         
+
           {/* Navigation */}
           <nav className="space-y-2" data-testid="sidebar-navigation">
             {navigationItems.map((item) => {
@@ -128,16 +125,6 @@ export default function Sidebar() {
               <FaPlus className="mr-2" />
               Post Product
             </Button>
-
-            <Button
-              onClick={() => setShowCreateVroom(true)}
-              variant="outline"
-              className="w-full"
-              data-testid="button-create-vroom"
-            >
-              <FaStore className="mr-2" />
-              Create Vroom
-            </Button>
           </div>
 
           {/* Logout Button */}
@@ -157,9 +144,6 @@ export default function Sidebar() {
 
       {/* Post Product Modal */}
       <PostProductModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
-
-      {/* Create Vroom Modal */}
-      <CreateVroomModal isOpen={showCreateVroom} onClose={() => setShowCreateVroom(false)} />
     </>
   );
 }

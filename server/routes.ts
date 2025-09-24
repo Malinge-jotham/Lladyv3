@@ -29,11 +29,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.params.userId;
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       res.json(user);
     } catch (error) {
       console.error("Error fetching user by ID:", error);
@@ -46,11 +46,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const query = req.params.query;
       const currentUserId = req.user.claims.sub;
-      
+
       if (!query || query.length < 2) {
         return res.status(400).json({ message: "Query must be at least 2 characters" });
       }
-      
+
       const users = await storage.searchUsers(query, currentUserId);
       res.json(users);
     } catch (error) {
@@ -64,11 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const profileData = await storage.getUserProfile(userId);
-      
+
       if (!profileData) {
         return res.status(404).json({ message: "Profile not found" });
       }
-      
+
       res.json(profileData);
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -80,7 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const profileData = updateProfileSchema.parse(req.body);
-      
+
       const updatedUser = await storage.updateProfile(userId, profileData);
       res.json(updatedUser);
     } catch (error) {
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { imageURL, type } = req.body;
-      
+
       if (!imageURL || !type) {
         return res.status(400).json({ message: "imageURL and type are required" });
       }
@@ -152,9 +152,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = type === 'profile' 
         ? { profileImageUrl: objectPath }
         : { bannerImageUrl: objectPath };
-      
+
       const updatedUser = await storage.updateProfile(userId, updateData);
-      
+
       res.json({
         objectPath,
         user: updatedUser,
@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       const products = await storage.getProducts(limit, offset);
-      
+
       // Get stats for each product
       const productsWithStats = await Promise.all(
         products.map(async (product) => {
@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...product, ...stats, user };
         })
       );
-      
+
       res.json(productsWithStats);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -254,10 +254,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
       // Increment views
       await storage.incrementProductViews(product.id);
-      
+
       const stats = await storage.getProductStats(product.id);
       const user = await storage.getUser(product.userId);
       res.json({ ...product, ...stats, user });
@@ -271,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertProductSchema.parse(req.body);
-      
+
       const product = await storage.createProduct(userId, validatedData);
       res.status(201).json(product);
     } catch (error) {
@@ -313,14 +313,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         productId: req.params.id
       });
-      
+
       const comment = await storage.commentOnProduct(
         userId, 
         req.params.id, 
         validatedData.content,
         validatedData.parentCommentId || undefined
       );
-      
+
       // Get the comment with user data
       const user = await storage.getUser(userId);
       res.status(201).json({ ...comment, user, replies: [] });
@@ -436,7 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!vroom) {
         return res.status(404).json({ message: "Vroom not found" });
       }
-      
+
       const products = await storage.getProductsByVroom(vroom.id);
       const user = await storage.getUser(vroom.userId);
       const userId = (req as any).user?.claims?.sub;
@@ -452,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertVroomSchema.parse(req.body);
-      
+
       const vroom = await storage.createVroom(userId, validatedData);
       res.status(201).json(vroom);
     } catch (error) {
@@ -515,11 +515,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { productId } = req.body;
-      
+
       if (!productId) {
         return res.status(400).json({ message: "Product ID is required" });
       }
-      
+
       await storage.addProductToVroom(productId, req.params.id, userId);
       res.status(200).json({ message: "Product added to vroom" });
     } catch (error) {
@@ -619,7 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const cartItems = await storage.getCartItems(userId);
-      
+
       // Get product details for each cart item
       const cartWithProducts = await Promise.all(
         cartItems.map(async (item) => {
@@ -627,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...item, product };
         })
       );
-      
+
       res.json(cartWithProducts);
     } catch (error) {
       console.error("Error fetching cart:", error);
@@ -663,12 +663,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const buyerId = req.user.claims.sub;
       const validatedData = insertOrderSchema.parse(req.body);
-      
+
       const order = await storage.createOrder(buyerId, validatedData);
-      
+
       // Clear cart item if it exists
       await storage.removeFromCart(buyerId, validatedData.productId);
-      
+
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating order:", error);
@@ -683,7 +683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const orders = await storage.getOrders(userId);
-      
+
       // Get product and user details for each order
       const ordersWithDetails = await Promise.all(
         orders.map(async (order) => {
@@ -693,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...order, product, buyer, seller };
         })
       );
-      
+
       res.json(ordersWithDetails);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -701,20 +701,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Message routes
+  // Message routes - SECURE VERSION WITH PROPER AUTHORIZATION
   app.get('/api/messages/conversations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const conversations = await storage.getConversations(userId);
-      
+      const conversations = await storage.getUserConversations(userId); // Only user's conversations
+
       // Get user details for each conversation
       const conversationsWithUsers = await Promise.all(
         conversations.map(async (conv) => {
-          const user = await storage.getUser(conv.userId);
-          return { ...conv, user };
+          // Get the other user in the conversation
+          const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
+          const user = await storage.getUser(otherUserId);
+          const lastMessage = await storage.getLastMessage(conv.id);
+          const unreadCount = await storage.getUnreadMessageCount(userId, conv.id);
+          return { ...conv, user, lastMessage, unreadCount };
         })
       );
-      
+
       res.json(conversationsWithUsers);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -722,28 +726,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/messages/:userId', isAuthenticated, async (req: any, res) => {
+  // Get messages by conversation ID - WITH AUTHORIZATION
+  app.get('/api/messages/conversation/:conversationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = req.params.conversationId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      // CRITICAL: Verify user is a participant in this conversation
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      if (conversation.user1Id !== userId && conversation.user2Id !== userId) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
+      }
+
+      const messages = await storage.getMessagesByConversation(conversationId, limit, offset);
+
+      // Mark messages as read for this conversation
+      await storage.markConversationMessagesAsRead(userId, conversationId);
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching conversation messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Get messages by user ID - WITH AUTHORIZATION
+  app.get('/api/messages/user/:otherUserId', isAuthenticated, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
-      const otherUserId = req.params.userId;
-      
-      const messages = await storage.getMessages(currentUserId, otherUserId);
-      
+      const otherUserId = req.params.otherUserId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      // Find or create conversation between users
+      let conversation = await storage.findConversation(currentUserId, otherUserId);
+      if (!conversation) {
+        conversation = await storage.createConversation(currentUserId, otherUserId);
+      }
+
+      // Double-check authorization
+      if (conversation.user1Id !== currentUserId && conversation.user2Id !== currentUserId) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
+      }
+
+      const messages = await storage.getMessagesByConversation(conversation.id, limit, offset);
+
       // Mark messages as read
-      await storage.markMessagesAsRead(currentUserId, otherUserId);
-      
-      res.json(messages);
+      await storage.markConversationMessagesAsRead(currentUserId, conversation.id);
+
+      res.json({
+        conversation,
+        messages
+      });
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
   });
 
+  // Send message - WITH AUTHORIZATION
   app.post('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
       const senderId = req.user.claims.sub;
       const validatedData = insertMessageSchema.parse(req.body);
-      
+
+      // Verify conversation access if conversationId is provided
+      if (validatedData.conversationId) {
+        const conversation = await storage.getConversation(validatedData.conversationId);
+        if (!conversation) {
+          return res.status(404).json({ message: "Conversation not found" });
+        }
+
+        // CRITICAL: Verify sender is a participant in the conversation
+        if (conversation.user1Id !== senderId && conversation.user2Id !== senderId) {
+          return res.status(403).json({ message: "Access denied to this conversation" });
+        }
+
+        // CRITICAL: Verify receiver is the other participant in the conversation
+        const receiverId = conversation.user1Id === senderId ? conversation.user2Id : conversation.user1Id;
+        if (validatedData.receiverId !== receiverId) {
+          return res.status(400).json({ message: "Receiver ID does not match conversation" });
+        }
+      } else {
+        // If no conversationId, create/find conversation and verify access
+        if (!validatedData.receiverId) {
+          return res.status(400).json({ message: "Receiver ID is required when conversationId is not provided" });
+        }
+
+        let conversation = await storage.findConversation(senderId, validatedData.receiverId);
+        if (!conversation) {
+          conversation = await storage.createConversation(senderId, validatedData.receiverId);
+        }
+        validatedData.conversationId = conversation.id;
+      }
+
       const message = await storage.sendMessage(senderId, validatedData);
       res.status(201).json(message);
     } catch (error) {
@@ -755,35 +837,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Start a new conversation (for messaging from product pages)
+  // Start a new conversation - WITH AUTHORIZATION
   app.post('/api/messages/start', isAuthenticated, async (req: any, res) => {
     try {
       const senderId = req.user.claims.sub;
-      const { receiverId, content } = req.body;
+      const { receiverId, content, productId } = req.body;
 
       if (!receiverId || !content) {
         return res.status(400).json({ message: "receiverId and content are required" });
       }
 
-      // 1. Check if a conversation already exists between sender and receiver
+      // Users cannot message themselves
+      if (senderId === receiverId) {
+        return res.status(400).json({ message: "Cannot start conversation with yourself" });
+      }
+
+      // Check if a conversation already exists between sender and receiver
       let conversation = await storage.findConversation(senderId, receiverId);
 
-      // 2. If no conversation exists, create one
+      // If no conversation exists, create one
       if (!conversation) {
         conversation = await storage.createConversation(senderId, receiverId);
       }
 
-      // 3. Send the message inside that conversation
+      // Link conversation to product if provided
+      if (productId) {
+        await storage.linkConversationToProduct(conversation.id, productId);
+      }
+
+      // Send the message inside that conversation
       const message = await storage.sendMessage(senderId, {
         receiverId,
-        conversationId: conversation.id, // link to existing/new conversation
+        conversationId: conversation.id,
         content: content.trim(),
+        productId: productId || undefined
       });
 
       res.status(201).json({ conversation, message });
     } catch (error) {
       console.error("Error starting conversation:", error);
       res.status(500).json({ message: "Failed to start conversation" });
+    }
+  });
+
+  // Get conversation by product context - WITH AUTHORIZATION
+  app.get('/api/messages/product/:productId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const productId = req.params.productId;
+
+      // Find conversation related to this product involving the current user
+      const conversation = await storage.findProductConversation(userId, productId);
+
+      if (!conversation) {
+        return res.status(404).json({ message: "No conversation found for this product" });
+      }
+
+      // CRITICAL: Verify user is a participant in this conversation
+      if (conversation.user1Id !== userId && conversation.user2Id !== userId) {
+        return res.status(403).json({ message: "Access denied to this conversation" });
+      }
+
+      const messages = await storage.getMessagesByConversation(conversation.id);
+      await storage.markConversationMessagesAsRead(userId, conversation.id);
+
+      res.json({ conversation, messages });
+    } catch (error) {
+      console.error("Error fetching product conversation:", error);
+      res.status(500).json({ message: "Failed to fetch product conversation" });
+    }
+  });
+
+  // Get unread message count - USER-SPECIFIC
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getTotalUnreadMessageCount(userId);
+      res.json({ unreadCount: count });
+    } catch (error) {
+      console.error("Error fetching unread message count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
     }
   });
 
@@ -828,17 +961,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub;
       const objectStorageService = new ObjectStorageService();
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      
+
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
         userId: userId,
         requestedPermission: ObjectPermission.READ,
       });
-      
+
       if (!canAccess) {
         return res.sendStatus(401);
       }
-      
+
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error checking object access:", error);
@@ -851,56 +984,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // WebSocket server for real-time messaging
+  // WebSocket server for real-time messaging - WITH AUTHORIZATION
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   // Track connected clients by userId
   const clients = new Map<string, WebSocket>();
 
   wss.on("connection", (ws, req) => {
-    // Example: you can parse JWT from query string or headers to identify the user
+    // In a real implementation, you should verify JWT token here
     const params = new URLSearchParams(req.url?.split("?")[1]);
-    const userId = params.get("userId"); // ✅ Or decode JWT here
+    const userId = params.get("userId");
 
     if (!userId) {
-      ws.close();
+      ws.close(1008, "Authentication required");
       return;
     }
 
+    // Store the connection
     clients.set(userId, ws);
-
     console.log(`User ${userId} connected via WebSocket`);
 
     ws.on("message", async (data) => {
       try {
         const message = JSON.parse(data.toString());
-        const { receiverId, content } = message;
+        const { receiverId, content, conversationId, productId } = message;
 
         if (!receiverId || !content) {
-          return; // ignore bad messages
+          ws.send(JSON.stringify({ type: "error", message: "Receiver ID and content are required" }));
+          return;
         }
 
-        // ✅ Check or create conversation before saving message
-        let conversation = await storage.findConversation(userId, receiverId);
-        if (!conversation) {
-          conversation = await storage.createConversation(userId, receiverId);
+        // Users cannot message themselves
+        if (userId === receiverId) {
+          ws.send(JSON.stringify({ type: "error", message: "Cannot message yourself" }));
+          return;
         }
 
-        // ✅ Save message in DB
+        let conversation;
+
+        // Use existing conversationId or find/create one
+        if (conversationId) {
+          // Verify conversation access
+          conversation = await storage.getConversation(conversationId);
+          if (!conversation) {
+            ws.send(JSON.stringify({ type: "error", message: "Conversation not found" }));
+            return;
+          }
+
+          // CRITICAL: Verify user is a participant in this conversation
+          if (conversation.user1Id !== userId && conversation.user2Id !== userId) {
+            ws.send(JSON.stringify({ type: "error", message: "Access denied to conversation" }));
+            return;
+          }
+
+          // Verify receiver is the other participant
+          const expectedReceiverId = conversation.user1Id === userId ? conversation.user2Id : conversation.user1Id;
+          if (receiverId !== expectedReceiverId) {
+            ws.send(JSON.stringify({ type: "error", message: "Receiver ID does not match conversation" }));
+            return;
+          }
+        } else {
+          // Find or create conversation
+          conversation = await storage.findConversation(userId, receiverId);
+          if (!conversation) {
+            conversation = await storage.createConversation(userId, receiverId);
+          }
+
+          // Link to product if provided
+          if (productId) {
+            await storage.linkConversationToProduct(conversation.id, productId);
+          }
+        }
+
+        // Save message in DB
         const savedMessage = await storage.sendMessage(userId, {
           receiverId,
           conversationId: conversation.id,
           content: content.trim(),
+          productId: productId || undefined
         });
 
-        // ✅ Deliver to receiver if online
+        // Deliver to receiver if online
         const receiverSocket = clients.get(receiverId);
         if (receiverSocket && receiverSocket.readyState === receiverSocket.OPEN) {
-          receiverSocket.send(JSON.stringify({ type: "message", data: savedMessage }));
+          receiverSocket.send(JSON.stringify({ 
+            type: "message", 
+            data: savedMessage,
+            conversation: conversation
+          }));
         }
 
-        // ✅ Echo back to sender (to update UI instantly)
-        ws.send(JSON.stringify({ type: "message", data: savedMessage }));
+        // Echo back to sender
+        ws.send(JSON.stringify({ 
+          type: "message", 
+          data: savedMessage,
+          conversation: conversation
+        }));
       } catch (error) {
         console.error("WebSocket message error:", error);
         ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
@@ -911,8 +1090,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       clients.delete(userId);
       console.log(`User ${userId} disconnected`);
     });
+
+    ws.on("error", (error) => {
+      console.error(`WebSocket error for user ${userId}:`, error);
+      clients.delete(userId);
+    });
   });
 
   return httpServer;
 }
-

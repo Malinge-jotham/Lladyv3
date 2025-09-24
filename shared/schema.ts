@@ -138,14 +138,31 @@ export const vroomFollows = pgTable("vroom_follows", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Messages
+// Conversations for better message organization
+export const conversations = pgTable("conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  user1Id: varchar("user1_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  user2Id: varchar("user2_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  lastMessageId: varchar("last_message_id").references(() => messages.id, { onDelete: "set null" }),
+  unreadCount: integer("unread_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueConversation: unique().on(table.user1Id, table.user2Id),
+}));
+
+// Messages with enhanced privacy controls
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conversationId: varchar("conversation_id").references(() => conversations.id, { onDelete: "cascade" }),
   orderId: varchar("order_id").references(() => orders.id, { onDelete: "set null" }),
   content: text("content").notNull(),
+  messageType: varchar("message_type").default("direct_message"), // 'direct_message', 'order_notification', 'order_confirmation', 'system'
   isRead: boolean("is_read").default(false),
+  isPrivate: boolean("is_private").default(true),
+  metadata: jsonb("metadata"), // For additional message data
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -192,6 +209,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   followers: many(follows, { relationName: "following" }),
   vroomFollows: many(vroomFollows),
   images: many(imageBucket),
+  conversations1: many(conversations, { relationName: "user1" }),
+  conversations2: many(conversations, { relationName: "user2" }),
 }));
 
 export const vromsRelations = relations(vrooms, ({ one, many }) => ({
@@ -237,6 +256,24 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   messages: many(messages),
 }));
 
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  user1: one(users, {
+    fields: [conversations.user1Id],
+    references: [users.id],
+    relationName: "user1",
+  }),
+  user2: one(users, {
+    fields: [conversations.user2Id],
+    references: [users.id],
+    relationName: "user2",
+  }),
+  lastMessage: one(messages, {
+    fields: [conversations.lastMessageId],
+    references: [messages.id],
+  }),
+  messages: many(messages),
+}));
+
 export const productCommentsRelations = relations(productComments, ({ one, many }) => ({
   user: one(users, {
     fields: [productComments.userId],
@@ -266,6 +303,10 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.receiverId],
     references: [users.id],
     relationName: "receiver",
+  }),
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id],
   }),
   order: one(orders, {
     fields: [messages.orderId],
@@ -330,16 +371,27 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   totalAmount: z.union([z.string(), z.number()]).transform((val) => String(val)),
 });
 
+export const insertConversationSchema = createInsertSchema(conversations).pick({
+  user1Id: true,
+  user2Id: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).pick({
   receiverId: true,
+  conversationId: true,
   orderId: true,
   content: true,
+  messageType: true,
+  metadata: true,
 }).extend({
   content: z.string()
     .min(1, "Message content cannot be empty")
     .max(1000, "Message content cannot exceed 1000 characters")
     .trim(),
   receiverId: z.string().min(1, "Receiver ID is required"),
+  messageType: z.enum(['direct_message', 'order_notification', 'order_confirmation', 'system']).default('direct_message'),
+  conversationId: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
 });
 
 export const insertProductCommentSchema = createInsertSchema(productComments).pick({
@@ -375,6 +427,8 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertProductComment = z.infer<typeof insertProductCommentSchema>;
@@ -384,3 +438,4 @@ export type ImageBucket = typeof imageBucket.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type InsertBookmark = typeof bookmarks.$inferInsert;
+export type MessageType = 'direct_message' | 'order_notification' | 'order_confirmation' | 'system';

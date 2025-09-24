@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
@@ -8,6 +8,8 @@ import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 import MessageSellerButton from "@/components/product/MessageSellerButton";
 import { FaHeart, FaShoppingCart, FaShare, FaStore, FaComment, FaEdit } from "react-icons/fa";
 import ProductCommentsModal from "@/components/product/ProductCommentsModal";
+import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 
 interface ProductCardProps {
   product: {
@@ -28,6 +30,21 @@ interface ProductCardProps {
   className?: string;
 }
 
+interface ProductStats {
+  likes: number;
+  comments: number;
+  recentComments: Array<{
+    id: string;
+    content: string;
+    createdAt: string;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    };
+  }>;
+}
+
 export default function ProductCard({ product, showAddToVroom = true, className }: ProductCardProps) {
   const { addToCart } = useCart();
   const { isAuthenticated, user } = useAuth();
@@ -35,16 +52,48 @@ export default function ProductCard({ product, showAddToVroom = true, className 
   const [showVroomModal, setShowVroomModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
 
+  // Fetch product statistics (likes and comments)
+  const { data: productStats, isLoading: statsLoading } = useQuery<ProductStats>({
+    queryKey: [`/api/products/${product.id}/stats`],
+    enabled: !!product.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Handle like functionality
+  const handleLike = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to like products",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await apiRequest('POST', `/api/products/${product.id}/like`);
+      // The query will automatically refetch due to query invalidation
+      toast({
+        title: "Liked!",
+        description: "Product liked successfully",
+      });
+    } catch (error) {
+      console.error('Failed to like product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to like product. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddToCart = () => {
     addToCart(product.id);
   };
 
   const handleShare = async () => {
     try {
-      // Construct the product URL
       const productUrl = `${window.location.origin}/product/${product.id}`;
-
-      // Use the Clipboard API to copy the URL
       await navigator.clipboard.writeText(productUrl);
 
       toast({
@@ -70,7 +119,6 @@ export default function ProductCard({ product, showAddToVroom = true, className 
   };
 
   const handleEditProduct = () => {
-    // Navigate to edit product page
     window.location.href = `/product/edit/${product.id}`;
   };
 
@@ -78,22 +126,25 @@ export default function ProductCard({ product, showAddToVroom = true, className 
     ? product.imageUrls[0] 
     : "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300";
 
-  // Convert price to string if it's a number
   const displayPrice = typeof product.price === 'number' ? product.price.toFixed(2) : product.price;
-
-  // Check if current user is the product owner
   const isProductOwner = user?.id === (product.userId || product.user?.id);
+
+  // Check if current user has liked the product
+  const hasUserLiked = productStats?.likes && user?.id ? 
+    // This would typically come from the API, but for now we'll check locally
+    false : false;
 
   return (
     <>
       <Card className={`overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col ${className || ''}`} data-testid={`product-card-${product.id}`}>
-        <div className="relative">
+        <div className="relative group">
           <img
             src={mainImage}
             alt={product.name}
             className="w-full h-48 object-cover"
             data-testid={`product-image-${product.id}`}
           />
+
           {/* Add to Vroom button overlay */}
           {showAddToVroom && isAuthenticated && (
             <Button
@@ -127,6 +178,23 @@ export default function ProductCard({ product, showAddToVroom = true, className 
               <FaEdit className="w-3 h-3" />
             </Button>
           )}
+
+          {/* Like button overlay */}
+          <Button
+            variant="secondary"
+            size="sm"
+            className={`absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity ${
+              hasUserLiked ? 'text-red-500' : 'text-gray-600'
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleLike();
+            }}
+            data-testid={`button-like-${product.id}`}
+          >
+            <FaHeart className={`w-3 h-3 ${hasUserLiked ? 'fill-current' : ''}`} />
+          </Button>
         </div>
 
         <CardContent className="p-4 flex flex-col flex-grow">
@@ -141,18 +209,51 @@ export default function ProductCard({ product, showAddToVroom = true, className 
             <span className="text-xl font-bold text-primary" data-testid={`product-price-${product.id}`}>
               KSH{displayPrice}
             </span>
-            {product.likes !== undefined && (
-              <div className="flex items-center gap-1 text-muted-foreground">
+
+            {/* Statistics section */}
+            <div className="flex items-center gap-3 text-muted-foreground">
+              {/* Likes count */}
+              <div className="flex items-center gap-1" title={`${productStats?.likes || 0} likes`}>
                 <FaHeart className="w-3 h-3" />
-                <span className="text-sm">{product.likes}</span>
+                <span className="text-sm" data-testid={`product-likes-${product.id}`}>
+                  {statsLoading ? '...' : (productStats?.likes || 0)}
+                </span>
               </div>
-            )}
+
+              {/* Comments count */}
+              <div className="flex items-center gap-1" title={`${productStats?.comments || 0} comments`}>
+                <FaComment className="w-3 h-3" />
+                <span className="text-sm" data-testid={`product-comments-${product.id}`}>
+                  {statsLoading ? '...' : (productStats?.comments || 0)}
+                </span>
+              </div>
+            </div>
           </div>
 
           {product.user && (
             <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
               by {product.user.firstName} {product.user.lastName}
             </p>
+          )}
+
+          {/* Recent comments preview */}
+          {productStats?.recentComments && productStats.recentComments.length > 0 && (
+            <div className="mb-3 border-t pt-2">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">Recent Comments:</p>
+              <div className="space-y-1 max-h-20 overflow-y-auto">
+                {productStats.recentComments.slice(0, 2).map((comment) => (
+                  <div key={comment.id} className="text-xs bg-muted/50 p-1 rounded">
+                    <span className="font-medium">{comment.user.firstName}: </span>
+                    <span className="text-muted-foreground line-clamp-1">{comment.content}</span>
+                  </div>
+                ))}
+                {productStats.recentComments.length > 2 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    +{productStats.recentComments.length - 2} more comments
+                  </p>
+                )}
+              </div>
+            </div>
           )}
 
           <div className="flex gap-2 mb-2">
@@ -186,7 +287,7 @@ export default function ProductCard({ product, showAddToVroom = true, className 
             </Button>
           </div>
 
-          {/* Message Seller Button - Keep text as requested */}
+          {/* Message Seller Button */}
           {isAuthenticated && (product.userId || product.user?.id) && !isProductOwner && (
             <div className="mt-2">
               <MessageSellerButton
@@ -229,6 +330,7 @@ export default function ProductCard({ product, showAddToVroom = true, className 
           isOpen={showCommentsModal}
           onClose={() => setShowCommentsModal(false)}
           product={product}
+          initialStats={productStats}
         />
       )}
     </>

@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import ProductPostActions from "@/components/product/ProductPostActions";
 
 interface ProductPostProps {
@@ -22,7 +23,6 @@ interface ProductPostProps {
   };
 }
 
-// Define currency symbols mapping
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
   EUR: "€",
@@ -35,7 +35,8 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 export default function ProductPost({ product }: ProductPostProps) {
-  // Get currency symbol - default to KSh if not specified
+  const router = useRouter();
+
   const currencySymbol = product.currency
     ? CURRENCY_SYMBOLS[product.currency] || "KSh"
     : "KSh";
@@ -59,8 +60,9 @@ export default function ProductPost({ product }: ProductPostProps) {
 
   return (
     <div
-      className="p-6 hover:bg-muted/30 transition-colors"
+      className="p-6 hover:bg-muted/30 transition-colors cursor-pointer rounded-lg"
       data-testid={`product-post-${product.id}`}
+      onClick={() => router.push(`/products/${product.id}`)}
     >
       <div className="flex space-x-3">
         {/* Profile Picture */}
@@ -113,7 +115,7 @@ export default function ProductPost({ product }: ProductPostProps) {
             <img
               src={mainImage}
               alt={product.name}
-              className="rounded-xl w-full object-cover max-h-96"
+              className="rounded-xl w-full object-cover"
               data-testid={`product-image-${product.id}`}
             />
 

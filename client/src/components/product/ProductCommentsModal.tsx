@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MessageCircle, Reply, Send } from "lucide-react";
+import { MessageCircle, Reply, Send, ThumbsUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -19,16 +19,32 @@ interface ProductCommentsModalProps {
   onClose: () => void;
 }
 
+interface CommentWithUser extends ProductComment {
+  user: User;
+  replies: (ProductComment & { user: User })[];
+  likedByUser?: boolean;
+  likesCount?: number;
+}
+
 export default function ProductCommentsModal({ product, isOpen, onClose }: ProductCommentsModalProps) {
   const [newComment, setNewComment] = useState("");
   const [replyContent, setReplyContent] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Fetch comments
-  const { data: comments = [], isLoading } = useQuery<(ProductComment & { user: User; replies: (ProductComment & { user: User })[] })[]>({
+  // Fetch comments with better error handling
+  const { data: comments = [], isLoading, error } = useQuery<CommentWithUser[]>({
     queryKey: ["/api/products", product.id, "comments"],
-    enabled: isOpen,
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", `/api/products/${product.id}/comments`);
+        return Array.isArray(res) ? res : [];
+      } catch (err) {
+        console.error("Error fetching comments:", err);
+        return [];
+      }
+    },
+    enabled: isOpen && !!product.id,
   });
 
   // Add comment mutation
@@ -40,12 +56,8 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
       });
     },
     onSuccess: () => {
-      // ✅ Refresh comments list
       queryClient.invalidateQueries({ queryKey: ["/api/products", product.id, "comments"] });
-
-      // ✅ Also refresh product stats so counts in ProductPostActions update
       queryClient.invalidateQueries({ queryKey: ["/api/products", product.id, "stats"] });
-
       setNewComment("");
       setReplyContent("");
       setReplyingTo(null);
@@ -74,67 +86,131 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
     },
   });
 
+  // Like/Unlike mutation
+  const toggleLikeMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      return await apiRequest("POST", `/api/products/${product.id}/comments/${commentId}/like-toggle`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products", product.id, "comments"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to toggle like",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmitComment = () => {
-    if (!newComment.trim()) return;
-    
-    addCommentMutation.mutate({
-      content: newComment.trim(),
-    });
+    if (!newComment.trim() || newComment.length > 1000) return;
+    addCommentMutation.mutate({ content: newComment.trim() });
   };
 
   const handleSubmitReply = (parentCommentId: string) => {
-    if (!replyContent.trim()) return;
-    
-    addCommentMutation.mutate({
-      content: replyContent.trim(),
-      parentCommentId,
-    });
+    if (!replyContent.trim() || replyContent.length > 1000) return;
+    addCommentMutation.mutate({ content: replyContent.trim(), parentCommentId });
   };
 
-  const renderComment = (comment: ProductComment & { user: User; replies: (ProductComment & { user: User })[] }) => (
+  // Safe user display name function
+  const getUserDisplayName = (user: User | null | undefined): string => {
+    if (!user) return "Unknown User";
+
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+
+    return user.email?.split('@')[0] || "User";
+  };
+
+  // Safe user avatar function
+  const getUserAvatar = (user: User | null | undefined, size: number = 8): JSX.Element => {
+    if (!user) {
+      return (
+        <div className={`w-${size} h-${size} rounded-full bg-muted flex items-center justify-center text-xs`}>
+          U
+        </div>
+      );
+    }
+
+    if (user.profileImageUrl) {
+      return (
+        <img
+          src={user.profileImageUrl}
+          alt={`${getUserDisplayName(user)}'s avatar`}
+          className={`w-${size} h-${size} rounded-full object-cover`}
+          onError={(e) => {
+            // Fallback if image fails to load
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+          }}
+        />
+      );
+    }
+
+    const initial = user.firstName?.[0] || user.email?.[0] || 'U';
+    return (
+      <div className={`w-${size} h-${size} rounded-full bg-primary flex items-center justify-center text-white text-xs`}>
+        {initial.toUpperCase()}
+      </div>
+    );
+  };
+
+  // Safe date formatting
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const renderComment = (comment: CommentWithUser) => (
     <div key={comment.id} className="space-y-2">
       <div className="flex items-start space-x-3 p-3 bg-muted/30 rounded-lg">
         <div className="flex-shrink-0">
-          {comment.user.profileImageUrl ? (
-            <img
-              src={comment.user.profileImageUrl}
-              alt={`${comment.user.firstName || 'User'}'s avatar`}
-              className="w-8 h-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm">
-              {comment.user.firstName?.[0] || comment.user.email?.[0] || 'U'}
-            </div>
-          )}
+          {getUserAvatar(comment.user, 8)}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
             <p className="text-sm font-medium text-foreground">
-              {comment.user.firstName && comment.user.lastName
-                ? `${comment.user.firstName} ${comment.user.lastName}`
-                : comment.user.email}
+              {getUserDisplayName(comment.user)}
             </p>
             <p className="text-xs text-muted-foreground">
-              {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : ''}
+              {formatDate(comment.createdAt as string)}
             </p>
           </div>
-          
-          <p className="text-sm text-foreground mt-1">{comment.content}</p>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setReplyingTo(comment.id)}
-            className="mt-2 h-7 px-2 text-xs"
-          >
-            <Reply className="w-3 h-3 mr-1" />
-            Reply
-          </Button>
+
+          <p className="text-sm text-foreground mt-1">{comment.content || ""}</p>
+
+          <div className="flex space-x-3 mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyingTo(comment.id)}
+              className="h-7 px-2 text-xs"
+            >
+              <Reply className="w-3 h-3 mr-1" />
+              Reply
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleLikeMutation.mutate(comment.id)}
+              className={`h-7 px-2 text-xs flex items-center ${comment.likedByUser ? 'text-primary font-semibold' : ''}`}
+              disabled={toggleLikeMutation.isPending}
+            >
+              <ThumbsUp className="w-3 h-3 mr-1" />
+              {comment.likesCount || 0}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Reply form */}
       {replyingTo === comment.id && (
         <div className="ml-11 space-y-2">
           <Textarea
@@ -143,6 +219,7 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
             onChange={(e) => setReplyContent(e.target.value)}
             className="min-h-[80px]"
             data-testid={`textarea-reply-${comment.id}`}
+            maxLength={1000}
           />
           <div className="flex space-x-2">
             <Button
@@ -169,38 +246,25 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
         </div>
       )}
 
-      {/* Replies */}
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-11 space-y-2">
           {comment.replies.map((reply) => (
             <div key={reply.id} className="flex items-start space-x-3 p-2 bg-muted/20 rounded-lg">
               <div className="flex-shrink-0">
-                {reply.user.profileImageUrl ? (
-                  <img
-                    src={reply.user.profileImageUrl}
-                    alt={`${reply.user.firstName || 'User'}'s avatar`}
-                    className="w-6 h-6 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-xs">
-                    {reply.user.firstName?.[0] || reply.user.email?.[0] || 'U'}
-                  </div>
-                )}
+                {getUserAvatar(reply.user, 6)}
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
                   <p className="text-xs font-medium text-foreground">
-                    {reply.user.firstName && reply.user.lastName
-                      ? `${reply.user.firstName} ${reply.user.lastName}`
-                      : reply.user.email}
+                    {getUserDisplayName(reply.user)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {reply.createdAt ? new Date(reply.createdAt).toLocaleDateString() : ''}
+                    {formatDate(reply.createdAt as string)}
                   </p>
                 </div>
-                
-                <p className="text-xs text-foreground mt-1">{reply.content}</p>
+
+                <p className="text-xs text-foreground mt-1">{reply.content || ""}</p>
               </div>
             </div>
           ))}
@@ -208,6 +272,25 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
       )}
     </div>
   );
+
+  // Show error state
+  if (error) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl" data-testid="modal-comments">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <MessageCircle className="w-5 h-5" />
+              <span>Comments on {product.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-8 text-destructive">
+            Error loading comments. Please try again.
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -219,13 +302,12 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
           </DialogTitle>
         </DialogHeader>
 
-        {/* Comments list */}
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               Loading comments...
             </div>
-          ) : comments.length === 0 ? (
+          ) : !comments || comments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No comments yet. Be the first to comment!
             </div>
@@ -234,7 +316,6 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
           )}
         </div>
 
-        {/* Add comment form */}
         <div className="border-t pt-4 space-y-3">
           <Textarea
             placeholder="Add a comment..."
@@ -242,16 +323,17 @@ export default function ProductCommentsModal({ product, isOpen, onClose }: Produ
             onChange={(e) => setNewComment(e.target.value)}
             className="min-h-[80px]"
             data-testid="textarea-new-comment"
+            maxLength={1000}
           />
-          
+
           <div className="flex justify-between items-center">
             <p className="text-xs text-muted-foreground">
               {newComment.length}/1000 characters
             </p>
-            
+
             <Button
               onClick={handleSubmitComment}
-              disabled={addCommentMutation.isPending || !newComment.trim()}
+              disabled={addCommentMutation.isPending || !newComment.trim() || newComment.length > 1000}
               data-testid="button-submit-comment"
             >
               <Send className="w-4 h-4 mr-2" />

@@ -6,14 +6,25 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { FaShoppingCart, FaShare, FaHeart, FaArrowLeft } from "react-icons/fa";
+import { FaShoppingCart, FaShare, FaHeart, FaArrowLeft, FaStore } from "react-icons/fa";
 import MessageSellerButton from "@/components/product/MessageSellerButton";
 import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 
+// ✅ Currency mapping (same as ProductPost)
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  NGN: "₦",
+  GHS: "₵",
+  KES: "KSh",
+  ZAR: "R",
+  EGP: "£",
+  XOF: "CFA",
+};
+
 export default function ProductDetailPage() {
-  const [match, params] = useRoute("/product/:id");
+  const [match, params] = useRoute("/products/:id"); // ✅ must match ProductPost link
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -21,7 +32,7 @@ export default function ProductDetailPage() {
   const [showVroomModal, setShowVroomModal] = useState(false);
 
   const { addToCart } = useCart();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -59,7 +70,7 @@ export default function ProductDetailPage() {
 
   const handleShare = async () => {
     try {
-      const productUrl = `${window.location.origin}/product/${product.id}`;
+      const productUrl = `${window.location.origin}/products/${product.id}`;
       await navigator.clipboard.writeText(productUrl);
       toast({
         title: "Link Copied!",
@@ -82,18 +93,24 @@ export default function ProductDetailPage() {
     return <div className="container mx-auto p-4">Product not found</div>;
   }
 
-  const mainImage = product.imageUrls && product.imageUrls.length > 0 
-    ? product.imageUrls[selectedImage] 
-    : "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300";
+  const mainImage =
+    product.imageUrls && product.imageUrls.length > 0
+      ? product.imageUrls[selectedImage]
+      : "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600";
 
-  const displayPrice = typeof product.price === 'number' ? product.price.toFixed(2) : product.price;
+  const currencySymbol = product.currency
+    ? CURRENCY_SYMBOLS[product.currency] || "KSh"
+    : "KSh";
+
+  const displayPrice =
+    typeof product.price === "number" ? product.price.toFixed(2) : product.price;
 
   return (
     <div className="container mx-auto p-4 max-w-6xl">
       {/* Back Button */}
-      <Button 
-        variant="outline" 
-        size="sm" 
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => window.history.back()}
         className="mb-6"
       >
@@ -108,7 +125,7 @@ export default function ProductDetailPage() {
             <img
               src={mainImage}
               alt={product.name}
-              className="w-full h-96 object-cover rounded-lg"
+              className="w-full object-cover rounded-lg"
             />
           </div>
           {product.imageUrls && product.imageUrls.length > 1 && (
@@ -119,7 +136,9 @@ export default function ProductDetailPage() {
                   src={url}
                   alt={`${product.name} ${index + 1}`}
                   className={`w-full h-20 object-cover rounded cursor-pointer border-2 ${
-                    selectedImage === index ? 'border-primary' : 'border-transparent'
+                    selectedImage === index
+                      ? "border-primary"
+                      : "border-transparent"
                   }`}
                   onClick={() => setSelectedImage(index)}
                 />
@@ -132,7 +151,10 @@ export default function ProductDetailPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-            <p className="text-2xl font-bold text-primary mb-4">${displayPrice}</p>
+            <p className="text-2xl font-bold text-primary mb-4">
+              {currencySymbol}
+              {displayPrice}
+            </p>
             <p className="text-muted-foreground mb-4">{product.description}</p>
           </div>
 
@@ -147,7 +169,8 @@ export default function ProductDetailPage() {
               ) : (
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <span className="text-lg font-semibold">
-                    {product.user.firstName?.[0]}{product.user.lastName?.[0]}
+                    {product.user.firstName?.[0]}
+                    {product.user.lastName?.[0]}
                   </span>
                 </div>
               )}
@@ -162,29 +185,25 @@ export default function ProductDetailPage() {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            <Button 
-              onClick={handleAddToCart}
-              className="w-full"
-              size="lg"
-            >
+            <Button onClick={handleAddToCart} className="w-full" size="lg">
               <FaShoppingCart className="mr-2" />
               Add to Cart
             </Button>
 
             <div className="flex gap-2">
-              <Button 
-                onClick={handleShare}
-                variant="outline"
-                className="flex-1"
-              >
+              <Button onClick={handleShare} variant="outline" className="flex-1">
                 <FaShare className="mr-2" />
                 Share
               </Button>
 
               {isAuthenticated && (product.userId || product.user?.id) && (
                 <MessageSellerButton
-                  sellerId={product.userId || product.user?.id || ''}
-                  sellerName={product.user ? `${product.user.firstName} ${product.user.lastName}` : undefined}
+                  sellerId={product.userId || product.user?.id || ""}
+                  sellerName={
+                    product.user
+                      ? `${product.user.firstName} ${product.user.lastName}`
+                      : undefined
+                  }
                   productName={product.name}
                   variant="outline"
                   className="flex-1"
