@@ -1,4 +1,4 @@
-import { useRouter } from "next/router";
+import { useLocation } from "wouter";
 import ProductPostActions from "@/components/product/ProductPostActions";
 
 interface ProductPostProps {
@@ -35,7 +35,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 export default function ProductPost({ product }: ProductPostProps) {
-  const router = useRouter();
+  const [, setLocation] = useLocation();
 
   const currencySymbol = product.currency
     ? CURRENCY_SYMBOLS[product.currency] || "KSh"
@@ -62,7 +62,7 @@ export default function ProductPost({ product }: ProductPostProps) {
     <div
       className="p-6 hover:bg-muted/30 transition-colors cursor-pointer rounded-lg"
       data-testid={`product-post-${product.id}`}
-      onClick={() => router.push(`/products/${product.id}`)}
+      onClick={() => setLocation(`/products/${product.id}`)}
     >
       <div className="flex space-x-3">
         {/* Profile Picture */}
