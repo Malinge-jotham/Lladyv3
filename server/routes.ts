@@ -305,6 +305,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if product is liked by user
+  app.get('/api/products/:id/isLiked', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const isLiked = await storage.isProductLiked(userId, req.params.id);
+      res.json(isLiked);
+    } catch (error) {
+      console.error("Error checking if product is liked:", error);
+      res.status(500).json({ message: "Failed to check if product is liked" });
+    }
+  });
+
   // Product comment endpoints
   app.post('/api/products/:id/comment', isAuthenticated, async (req: any, res) => {
     try {
@@ -598,6 +610,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error unbookmarking product:", error);
       res.status(500).json({ message: "Failed to unbookmark product" });
+    }
+  });
+
+  // Check if product is bookmarked by user
+  app.get('/api/products/:id/isBookmarked', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const isBookmarked = await storage.isProductBookmarked(userId, req.params.id);
+      res.json(isBookmarked);
+    } catch (error) {
+      console.error("Error checking if product is bookmarked:", error);
+      res.status(500).json({ message: "Failed to check if product is bookmarked" });
     }
   });
 
