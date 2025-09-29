@@ -6,7 +6,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/layout/Sidebar";
 import RightSidebar from "@/components/layout/RightSidebar";
 import ProductCard from "@/components/product/ProductCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,10 +79,8 @@ export default function Explore() {
       const currentScrollY = window.scrollY;
 
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down
         setIsHeaderVisible(false);
       } else if (currentScrollY < lastScrollY || currentScrollY <= 100) {
-        // Scrolling up or at top
         setIsHeaderVisible(true);
       }
 
@@ -197,18 +195,17 @@ export default function Explore() {
     <div className="flex min-h-screen">
       <Sidebar />
 
-      {/* Main Content - Adjusted to use proper spacing */}
+      {/* Main Content */}
       <div className="flex-1 ml-16 lg:ml-64 mr-0 lg:mr-80">
         <div className="flex">
-          {/* Center Content - Fixed width issues */}
           <div className="flex-1 w-full border-x border-border min-h-screen overflow-x-hidden">
-            {/* Header with scroll behavior */}
+
+            {/* Header */}
             <div 
               ref={headerRef}
               className={`sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border p-4 transition-transform duration-300 z-10 ${
                 isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
               }`}
-              data-testid="explore-header"
             >
               <div className="flex items-center gap-3 mb-4">
                 <FaCompass className="text-primary text-xl" />
@@ -225,15 +222,14 @@ export default function Explore() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="pl-10"
-                    data-testid="search-input"
                   />
                 </div>
-                <Button onClick={handleSearch} data-testid="search-button">
+                <Button onClick={handleSearch}>
                   <FaSearch />
                 </Button>
               </div>
 
-              {/* Search Filters - Icons only */}
+              {/* Filters */}
               <div className="flex gap-2 flex-wrap">
                 <Select value={searchType} onValueChange={(value: SearchType) => setSearchType(value)}>
                   <SelectTrigger className="w-12 md:w-32">
@@ -291,7 +287,6 @@ export default function Explore() {
                       size="sm"
                       onClick={() => handleCategoryClick(category.id)}
                       className="flex items-center gap-2"
-                      data-testid={`category-${category.id}`}
                     >
                       <Icon className="w-4 h-4" />
                       <span className="hidden sm:inline">{category.name}</span>
@@ -302,36 +297,24 @@ export default function Explore() {
               </div>
             </div>
 
-            {/* Content Tabs */}
+            {/* Tabs */}
             <Tabs defaultValue="discover" className="flex-1">
-              <TabsList className="w-full justify-start border-b border-border rounded-none h-12 bg-transparent p-0 sticky top-0 z-10 bg-background" style={{ top: isHeaderVisible ? `${headerHeight}px` : '0' }}>
-                <TabsTrigger 
-                  value="discover" 
-                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent px-3 sm:px-6"
-                >
-                  <FaCompass />
-                  <span className="hidden sm:inline">Discover</span>
+              <TabsList className="w-full justify-start border-b border-border rounded-none h-12 bg-transparent p-0 sticky z-10 bg-background" style={{ top: isHeaderVisible ? `${headerHeight}px` : '0' }}>
+                <TabsTrigger value="discover" className="flex items-center gap-2 px-3 sm:px-6">
+                  <FaCompass /> <span className="hidden sm:inline">Discover</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="trending" 
-                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent px-3 sm:px-6"
-                >
-                  <FaFire />
-                  <span className="hidden sm:inline">Trending</span>
+                <TabsTrigger value="trending" className="flex items-center gap-2 px-3 sm:px-6">
+                  <FaFire /> <span className="hidden sm:inline">Trending</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="hashtags" 
-                  className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary bg-transparent px-3 sm:px-6"
-                >
-                  <FaHashtag />
-                  <span className="hidden sm:inline">Hashtags</span>
+                <TabsTrigger value="hashtags" className="flex items-center gap-2 px-3 sm:px-6">
+                  <FaHashtag /> <span className="hidden sm:inline">Hashtags</span>
                 </TabsTrigger>
               </TabsList>
 
-              {/* Discover Tab */}
+              {/* Discover */}
               <TabsContent value="discover" className="p-4">
                 {activeSearchQuery ? (
-                  <div>
+                  <>
                     <h3 className="text-lg font-semibold mb-4">
                       Search results for "{activeSearchQuery}"
                     </h3>
@@ -342,9 +325,9 @@ export default function Explore() {
                         ))}
                       </div>
                     ) : searchResults && Array.isArray(searchResults) && searchResults.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="search-results">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {searchResults.map((product: any) => (
-                          <ProductCard key={product.id} product={product} className="h-auto min-h-96" />
+                          <ProductCard key={product.id} product={product} className="h-auto" />
                         ))}
                       </div>
                     ) : (
@@ -354,9 +337,9 @@ export default function Explore() {
                         <p className="text-sm">Try different keywords or browse categories</p>
                       </div>
                     )}
-                  </div>
+                  </>
                 ) : (
-                  <div>
+                  <>
                     <h3 className="text-lg font-semibold mb-4">Featured Products</h3>
                     {featuredLoading ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -365,9 +348,9 @@ export default function Explore() {
                         ))}
                       </div>
                     ) : featuredProducts && Array.isArray(featuredProducts) && featuredProducts.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="featured-products">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {featuredProducts.slice(0, 15).map((product: any) => (
-                          <ProductCard key={product.id} product={product} className="h-auto min-h-96" />
+                          <ProductCard key={product.id} product={product} className="h-auto" />
                         ))}
                       </div>
                     ) : (
@@ -377,71 +360,66 @@ export default function Explore() {
                         <p className="text-sm">Check back later for new products</p>
                       </div>
                     )}
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Trending */}
+              <TabsContent value="trending" className="p-4">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <FaFire className="text-accent" />
+                  Trending Products
+                </h3>
+                {trendingLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                      <Skeleton key={i} className="h-96 w-full" />
+                    ))}
+                  </div>
+                ) : trendingProducts && Array.isArray(trendingProducts) && trendingProducts.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {trendingProducts.map((product: any) => (
+                      <ProductCard key={product.id} product={product} className="h-auto" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FaFire className="mx-auto text-4xl mb-4 opacity-50" />
+                    <p>No trending products yet</p>
+                    <p className="text-sm">Check back later for trending content</p>
                   </div>
                 )}
               </TabsContent>
 
-              {/* Trending Tab */}
-              <TabsContent value="trending" className="p-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <FaFire className="text-accent" />
-                    Trending Products
-                  </h3>
-                  {trendingLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {[...Array(6)].map((_, i) => (
-                        <Skeleton key={i} className="h-96 w-full" />
-                      ))}
-                    </div>
-                  ) : trendingProducts && Array.isArray(trendingProducts) && trendingProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="trending-products">
-                      {trendingProducts.map((product: any) => (
-                        <ProductCard key={product.id} product={product} className="h-auto min-h-96" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <FaFire className="mx-auto text-4xl mb-4 opacity-50" />
-                      <p>No trending products yet</p>
-                      <p className="text-sm">Check back later for trending content</p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Hashtags Tab */}
+              {/* Hashtags */}
               <TabsContent value="hashtags" className="p-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <FaHashtag className="text-primary" />
-                    Trending Hashtags
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="trending-hashtags">
-                    {trendingHashtags.map((hashtag, index) => (
-                      <Card 
-                        key={hashtag.tag}
-                        className="hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => handleHashtagClick(hashtag.tag)}
-                        data-testid={`hashtag-${hashtag.tag.slice(1)}`}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                <FaHashtag className="text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-semibold text-primary">{hashtag.tag}</p>
-                                <p className="text-sm text-muted-foreground">{hashtag.count} products</p>
-                              </div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <FaHashtag className="text-primary" />
+                  Trending Hashtags
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {trendingHashtags.map((hashtag, index) => (
+                    <Card 
+                      key={hashtag.tag}
+                      className="hover:shadow-lg transition-shadow cursor-pointer"
+                      onClick={() => handleHashtagClick(hashtag.tag)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <FaHashtag className="text-primary" />
                             </div>
-                            <Badge variant="secondary">#{index + 1}</Badge>
+                            <div>
+                              <p className="font-semibold text-primary">{hashtag.tag}</p>
+                              <p className="text-sm text-muted-foreground">{hashtag.count} products</p>
+                            </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                          <Badge variant="secondary">#{index + 1}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </TabsContent>
             </Tabs>
@@ -451,7 +429,7 @@ export default function Explore() {
 
       <RightSidebar />
 
-      {/* Scroll to top button - Positioned to avoid overlapping with sidebar */}
+      {/* Scroll to top */}
       {!isHeaderVisible && (
         <Button
           onClick={scrollToTop}

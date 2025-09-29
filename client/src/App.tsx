@@ -1,3 +1,4 @@
+
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import Messages from "@/pages/messages";
 import Trending from "@/pages/trending";
 import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
+import ProductDetailPage from "@/components/product/ProductDetailPage";
 
 // 🔥 import the scaffolded pages
 import HashtagPage from "@/pages/hashtags/[tag]";
@@ -31,6 +33,8 @@ function Router() {
           <Route path="/messages" component={Messages} />
           <Route path="/trending" component={Trending} />
           <Route path="/profile" component={Profile} />
+          <Route path="/products/:id" component={ProductDetailPage} />
+
 
           {/* ✅ new dynamic routes */}
           <Route path="/hashtags/:tag" component={HashtagPage} />

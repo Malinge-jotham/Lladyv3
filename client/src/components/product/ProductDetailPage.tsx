@@ -11,7 +11,10 @@ import MessageSellerButton from "@/components/product/MessageSellerButton";
 import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 
-// ✅ Currency mapping (same as ProductPost)
+// ✅ Layout
+import Sidebar from "@/components/layout/Sidebar";
+import RightSidebar from "@/components/layout/RightSidebar";
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
   EUR: "€",
@@ -24,7 +27,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 export default function ProductDetailPage() {
-  const [match, params] = useRoute("/products/:id"); // ✅ must match ProductPost link
+  const [match, params] = useRoute("/products/:id");
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -86,11 +89,19 @@ export default function ProductDetailPage() {
   };
 
   if (loading) {
-    return <div className="container mx-auto p-4">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
   }
 
   if (!product) {
-    return <div className="container mx-auto p-4">Product not found</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Product not found
+      </div>
+    );
   }
 
   const mainImage =
@@ -106,161 +117,166 @@ export default function ProductDetailPage() {
     typeof product.price === "number" ? product.price.toFixed(2) : product.price;
 
   return (
-    <div className="container mx-auto p-4 max-w-6xl">
-      {/* Back Button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => window.history.back()}
-        className="mb-6"
-      >
-        <FaArrowLeft className="mr-2" />
-        Back
-      </Button>
+    <div className="flex min-h-screen">
+      <Sidebar />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Product Images */}
-        <div>
-          <div className="mb-4">
+      {/* Main Product Content - centered, compressed */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-3xl mx-auto space-y-8">
+          {/* Back Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="mb-6"
+          >
+            <FaArrowLeft className="mr-2" />
+            Back
+          </Button>
+
+          {/* Product Image */}
+          <div>
             <img
               src={mainImage}
               alt={product.name}
               className="w-full object-cover rounded-lg"
             />
-          </div>
-          {product.imageUrls && product.imageUrls.length > 1 && (
-            <div className="grid grid-cols-4 gap-2">
-              {product.imageUrls.map((url: string, index: number) => (
-                <img
-                  key={index}
-                  src={url}
-                  alt={`${product.name} ${index + 1}`}
-                  className={`w-full h-20 object-cover rounded cursor-pointer border-2 ${
-                    selectedImage === index
-                      ? "border-primary"
-                      : "border-transparent"
-                  }`}
-                  onClick={() => setSelectedImage(index)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Product Details */}
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-            <p className="text-2xl font-bold text-primary mb-4">
-              {currencySymbol}
-              {displayPrice}
-            </p>
-            <p className="text-muted-foreground mb-4">{product.description}</p>
-          </div>
-
-          {product.user && (
-            <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-              {product.user.profileImageUrl ? (
-                <img
-                  src={product.user.profileImageUrl}
-                  alt="Seller"
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-lg font-semibold">
-                    {product.user.firstName?.[0]}
-                    {product.user.lastName?.[0]}
-                  </span>
-                </div>
-              )}
-              <div>
-                <p className="font-semibold">
-                  {product.user.firstName} {product.user.lastName}
-                </p>
-                <p className="text-sm text-muted-foreground">Seller</p>
+            {product.imageUrls && product.imageUrls.length > 1 && (
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                {product.imageUrls.map((url: string, index: number) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`${product.name} ${index + 1}`}
+                    className={`w-full h-20 object-cover rounded cursor-pointer border-2 ${
+                      selectedImage === index
+                        ? "border-primary"
+                        : "border-transparent"
+                    }`}
+                    onClick={() => setSelectedImage(index)}
+                  />
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <Button onClick={handleAddToCart} className="w-full" size="lg">
-              <FaShoppingCart className="mr-2" />
-              Add to Cart
-            </Button>
-
-            <div className="flex gap-2">
-              <Button onClick={handleShare} variant="outline" className="flex-1">
-                <FaShare className="mr-2" />
-                Share
-              </Button>
-
-              {isAuthenticated && (product.userId || product.user?.id) && (
-                <MessageSellerButton
-                  sellerId={product.userId || product.user?.id || ""}
-                  sellerName={
-                    product.user
-                      ? `${product.user.firstName} ${product.user.lastName}`
-                      : undefined
-                  }
-                  productName={product.name}
-                  variant="outline"
-                  className="flex-1"
-                />
-              )}
+          {/* Product Details */}
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
+              <p className="text-2xl font-bold text-primary mb-4">
+                {currencySymbol}
+                {displayPrice}
+              </p>
+              <p className="text-muted-foreground mb-4">{product.description}</p>
             </div>
 
-            {isAuthenticated && (
-              <Button
-                variant="ghost"
-                onClick={() => setShowVroomModal(true)}
-                className="w-full"
-              >
-                <FaStore className="mr-2" />
-                Add to Vroom
-              </Button>
+            {product.user && (
+              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                {product.user.profileImageUrl ? (
+                  <img
+                    src={product.user.profileImageUrl}
+                    alt="Seller"
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-lg font-semibold">
+                      {product.user.firstName?.[0]}
+                      {product.user.lastName?.[0]}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold">
+                    {product.user.firstName} {product.user.lastName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Seller</p>
+                </div>
+              </div>
             )}
 
-            <Button
-              variant="ghost"
-              onClick={() => setShowCommentsModal(true)}
-              className="w-full"
-            >
-              <FaHeart className="mr-2" />
-              View Comments
-            </Button>
-          </div>
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Button onClick={handleAddToCart} className="w-full" size="lg">
+                <FaShoppingCart className="mr-2" />
+                Add to Cart
+              </Button>
 
-          {/* Product Stats */}
-          {product.likes !== undefined && (
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <FaHeart />
-                {product.likes} likes
-              </span>
+              <div className="flex gap-2">
+                <Button onClick={handleShare} variant="outline" className="flex-1">
+                  <FaShare className="mr-2" />
+                  Share
+                </Button>
+
+                {isAuthenticated && (product.userId || product.user?.id) && (
+                  <MessageSellerButton
+                    sellerId={product.userId || product.user?.id || ""}
+                    sellerName={
+                      product.user
+                        ? `${product.user.firstName} ${product.user.lastName}`
+                        : undefined
+                    }
+                    productName={product.name}
+                    variant="outline"
+                    className="flex-1"
+                  />
+                )}
+              </div>
+
+              {isAuthenticated && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowVroomModal(true)}
+                  className="w-full"
+                >
+                  <FaStore className="mr-2" />
+                  Add to Vroom
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                onClick={() => setShowCommentsModal(true)}
+                className="w-full"
+              >
+                <FaHeart className="mr-2" />
+                View Comments
+              </Button>
             </div>
-          )}
+
+            {/* Product Stats */}
+            {product.likes !== undefined && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <FaHeart />
+                  {product.likes} likes
+                </span>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Modals */}
+        {showVroomModal && (
+          <AddProductToVroomModal
+            isOpen={showVroomModal}
+            onClose={() => setShowVroomModal(false)}
+            productId={product.id}
+            productName={product.name}
+          />
+        )}
+
+        {showCommentsModal && (
+          <ProductCommentsModal
+            isOpen={showCommentsModal}
+            onClose={() => setShowCommentsModal(false)}
+            product={product}
+          />
+        )}
       </div>
 
-      {/* Modals */}
-      {showVroomModal && (
-        <AddProductToVroomModal
-          isOpen={showVroomModal}
-          onClose={() => setShowVroomModal(false)}
-          productId={product.id}
-          productName={product.name}
-        />
-      )}
-
-      {showCommentsModal && (
-        <ProductCommentsModal
-          isOpen={showCommentsModal}
-          onClose={() => setShowCommentsModal(false)}
-          product={product}
-        />
-      )}
+      <RightSidebar />
     </div>
   );
 }

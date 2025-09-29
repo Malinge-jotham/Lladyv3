@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
@@ -52,14 +52,12 @@ export default function ProductCard({ product, showAddToVroom = true, className 
   const [showVroomModal, setShowVroomModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
 
-  // Fetch product statistics (likes and comments)
   const { data: productStats, isLoading: statsLoading } = useQuery<ProductStats>({
     queryKey: [`/api/products/${product.id}/stats`],
     enabled: !!product.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Handle like functionality
   const handleLike = async () => {
     if (!isAuthenticated) {
       toast({
@@ -69,16 +67,10 @@ export default function ProductCard({ product, showAddToVroom = true, className 
       });
       return;
     }
-
     try {
       await apiRequest('POST', `/api/products/${product.id}/like`);
-      // The query will automatically refetch due to query invalidation
-      toast({
-        title: "Liked!",
-        description: "Product liked successfully",
-      });
+      toast({ title: "Liked!", description: "Product liked successfully" });
     } catch (error) {
-      console.error('Failed to like product:', error);
       toast({
         title: "Error",
         description: "Failed to like product. Please try again.",
@@ -87,57 +79,31 @@ export default function ProductCard({ product, showAddToVroom = true, className 
     }
   };
 
-  const handleAddToCart = () => {
-    addToCart(product.id);
-  };
-
+  const handleAddToCart = () => addToCart(product.id);
   const handleShare = async () => {
     try {
       const productUrl = `${window.location.origin}/product/${product.id}`;
       await navigator.clipboard.writeText(productUrl);
-
-      toast({
-        title: "Link Copied!",
-        description: "Product link has been copied to clipboard.",
-      });
-    } catch (err) {
-      console.error('Failed to copy link:', err);
-      toast({
-        title: "Error",
-        description: "Failed to copy link. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Link Copied!", description: "Product link copied." });
+    } catch {
+      toast({ title: "Error", description: "Failed to copy link.", variant: "destructive" });
     }
   };
+  const handleAddToVroom = () => setShowVroomModal(true);
+  const handleShowComments = () => setShowCommentsModal(true);
+  const handleEditProduct = () => { window.location.href = `/product/edit/${product.id}`; };
 
-  const handleAddToVroom = () => {
-    setShowVroomModal(true);
-  };
-
-  const handleShowComments = () => {
-    setShowCommentsModal(true);
-  };
-
-  const handleEditProduct = () => {
-    window.location.href = `/product/edit/${product.id}`;
-  };
-
-  const mainImage = product.imageUrls && product.imageUrls.length > 0 
-    ? product.imageUrls[0] 
-    : "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300";
+  const mainImage = product.imageUrls?.[0] ||
+    "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=400&h=300";
 
   const displayPrice = typeof product.price === 'number' ? product.price.toFixed(2) : product.price;
   const isProductOwner = user?.id === (product.userId || product.user?.id);
 
-  // Check if current user has liked the product
-  const hasUserLiked = productStats?.likes && user?.id ? 
-    // This would typically come from the API, but for now we'll check locally
-    false : false;
-
   return (
     <>
       <Card className={`overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col ${className || ''}`} data-testid={`product-card-${product.id}`}>
-        <div className="relative group">
+        {/* Image section clickable */}
+        <a href={`/product/${product.id}`} className="relative group block">
           <img
             src={mainImage}
             alt={product.name}
@@ -145,82 +111,57 @@ export default function ProductCard({ product, showAddToVroom = true, className 
             data-testid={`product-image-${product.id}`}
           />
 
-          {/* Add to Vroom button overlay */}
           {showAddToVroom && isAuthenticated && (
             <Button
               variant="secondary"
               size="sm"
               className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleAddToVroom();
-              }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddToVroom(); }}
               data-testid={`button-add-to-vroom-${product.id}`}
             >
               <FaStore className="w-3 h-3" />
             </Button>
           )}
 
-          {/* Edit button for product owner */}
           {isProductOwner && (
             <Button
               variant="secondary"
               size="sm"
               className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleEditProduct();
-              }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditProduct(); }}
               data-testid={`button-edit-${product.id}`}
             >
               <FaEdit className="w-3 h-3" />
             </Button>
           )}
 
-          {/* Like button overlay */}
           <Button
             variant="secondary"
             size="sm"
-            className={`absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity ${
-              hasUserLiked ? 'text-red-500' : 'text-gray-600'
-            }`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleLike();
-            }}
+            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLike(); }}
             data-testid={`button-like-${product.id}`}
           >
-            <FaHeart className={`w-3 h-3 ${hasUserLiked ? 'fill-current' : ''}`} />
+            <FaHeart className="w-3 h-3" />
           </Button>
-        </div>
+        </a>
 
         <CardContent className="p-4 flex flex-col flex-grow">
-          <h3 className="font-semibold mb-2 line-clamp-2 h-10" data-testid={`product-name-${product.id}`}>
-            {product.name}
-          </h3>
-          <p className="text-muted-foreground text-sm mb-3 line-clamp-3 flex-grow" data-testid={`product-description-${product.id}`}>
-            {product.description}
-          </p>
+          <h3 className="font-semibold mb-2 line-clamp-2 h-10" data-testid={`product-name-${product.id}`}>{product.name}</h3>
+          <p className="text-muted-foreground text-sm mb-3 line-clamp-3 flex-grow" data-testid={`product-description-${product.id}`}>{product.description}</p>
 
           <div className="flex items-center justify-between mb-3">
             <span className="text-xl font-bold text-primary" data-testid={`product-price-${product.id}`}>
               KSH{displayPrice}
             </span>
 
-            {/* Statistics section */}
             <div className="flex items-center gap-3 text-muted-foreground">
-              {/* Likes count */}
               <div className="flex items-center gap-1" title={`${productStats?.likes || 0} likes`}>
                 <FaHeart className="w-3 h-3" />
                 <span className="text-sm" data-testid={`product-likes-${product.id}`}>
                   {statsLoading ? '...' : (productStats?.likes || 0)}
                 </span>
               </div>
-
-              {/* Comments count */}
               <div className="flex items-center gap-1" title={`${productStats?.comments || 0} comments`}>
                 <FaComment className="w-3 h-3" />
                 <span className="text-sm" data-testid={`product-comments-${product.id}`}>
@@ -236,8 +177,7 @@ export default function ProductCard({ product, showAddToVroom = true, className 
             </p>
           )}
 
-          {/* Recent comments preview */}
-          {productStats?.recentComments && productStats.recentComments.length > 0 && (
+          {productStats?.recentComments?.length ? (
             <div className="mb-3 border-t pt-2">
               <p className="text-xs font-semibold text-muted-foreground mb-1">Recent Comments:</p>
               <div className="space-y-1 max-h-20 overflow-y-auto">
@@ -254,40 +194,20 @@ export default function ProductCard({ product, showAddToVroom = true, className 
                 )}
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="flex gap-2 mb-2">
-            <Button 
-              onClick={handleAddToCart}
-              className="flex-1 p-2"
-              data-testid={`button-add-to-cart-${product.id}`}
-              title="Add to Cart"
-            >
+            <Button onClick={handleAddToCart} className="flex-1 p-2" data-testid={`button-add-to-cart-${product.id}`} title="Add to Cart">
               <FaShoppingCart className="w-4 h-4" />
             </Button>
-
-            <Button 
-              onClick={handleShare}
-              variant="outline"
-              className="flex-1 p-2"
-              data-testid={`button-share-${product.id}`}
-              title="Share"
-            >
+            <Button onClick={handleShare} variant="outline" className="flex-1 p-2" data-testid={`button-share-${product.id}`} title="Share">
               <FaShare className="w-4 h-4" />
             </Button>
-
-            <Button
-              onClick={handleShowComments}
-              variant="outline"
-              className="flex-1 p-2"
-              data-testid={`button-comments-${product.id}`}
-              title="Comments"
-            >
+            <Button onClick={handleShowComments} variant="outline" className="flex-1 p-2" data-testid={`button-comments-${product.id}`} title="Comments">
               <FaComment className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Message Seller Button */}
           {isAuthenticated && (product.userId || product.user?.id) && !isProductOwner && (
             <div className="mt-2">
               <MessageSellerButton
@@ -298,7 +218,6 @@ export default function ProductCard({ product, showAddToVroom = true, className 
             </div>
           )}
 
-          {/* Add to Vroom button (bottom action) */}
           {showAddToVroom && isAuthenticated && (
             <Button
               variant="ghost"
@@ -314,24 +233,12 @@ export default function ProductCard({ product, showAddToVroom = true, className 
         </CardContent>
       </Card>
 
-      {/* Add to Vroom Modal */}
       {showVroomModal && (
-        <AddProductToVroomModal
-          isOpen={showVroomModal}
-          onClose={() => setShowVroomModal(false)}
-          productId={product.id}
-          productName={product.name}
-        />
+        <AddProductToVroomModal isOpen={showVroomModal} onClose={() => setShowVroomModal(false)} productId={product.id} productName={product.name} />
       )}
 
-      {/* Comments Modal */}
       {showCommentsModal && (
-        <ProductCommentsModal
-          isOpen={showCommentsModal}
-          onClose={() => setShowCommentsModal(false)}
-          product={product}
-          initialStats={productStats}
-        />
+        <ProductCommentsModal isOpen={showCommentsModal} onClose={() => setShowCommentsModal(false)} product={product} initialStats={productStats} />
       )}
     </>
   );
