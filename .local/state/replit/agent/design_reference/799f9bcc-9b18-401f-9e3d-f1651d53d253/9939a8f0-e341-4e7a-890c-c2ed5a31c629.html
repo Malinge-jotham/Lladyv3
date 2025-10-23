@@ -1,0 +1,1074 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eldady - Social Commerce Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                }
+            },
+            fontFamily: {
+                sans: ["Inter", "sans-serif"],
+            }
+        }
+    };
+    </script>
+
+    <style>
+        :root {
+            --background: hsl(45 30% 98%);
+            --foreground: hsl(25 15% 15%);
+            --card: hsl(45 20% 96%);
+            --card-foreground: hsl(25 15% 20%);
+            --popover: hsl(45 20% 96%);
+            --popover-foreground: hsl(25 15% 15%);
+            --primary: hsl(15 70% 55%);
+            --primary-foreground: hsl(45 30% 98%);
+            --secondary: hsl(35 15% 85%);
+            --secondary-foreground: hsl(25 15% 25%);
+            --muted: hsl(35 20% 90%);
+            --muted-foreground: hsl(25 10% 45%);
+            --accent: hsl(10 80% 65%);
+            --accent-foreground: hsl(45 30% 98%);
+            --destructive: hsl(0 70% 50%);
+            --destructive-foreground: hsl(45 30% 98%);
+            --border: hsl(35 25% 85%);
+            --input: hsl(35 25% 85%);
+            --ring: hsl(15 70% 55%);
+            --radius: 12px;
+        }
+
+        * {
+            border-color: hsl(var(--border));
+        }
+
+        body {
+            font-family: Inter, sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        .cart-badge {
+            animation: bounce 0.3s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-3px); }
+            60% { transform: translateY(-1px); }
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .social-btn:hover {
+            transform: scale(1.05);
+            transition: transform 0.1s ease-in-out;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body class="bg-background min-h-screen">
+    <!-- @COMPONENT: AppContainer -->
+    <div id="app" class="min-h-screen">
+        
+        <!-- Landing Page -->
+        <!-- @COMPONENT: LandingPage -->
+        <div id="landing-page" class="page active">
+            <div class="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+                <div class="max-w-md w-full">
+                    <!-- Logo and Title -->
+                    <div class="text-center mb-8">
+                        <h1 class="text-4xl font-bold text-primary mb-2">Eldady</h1>
+                        <p class="text-muted-foreground text-lg">Where products meet community</p>
+                    </div>
+
+                    <!-- Auth Card -->
+                    <div class="bg-card rounded-lg p-8 shadow-lg border border-border">
+                        <div class="space-y-6">
+                            <!-- Google Auth -->
+                            <button class="w-full bg-white border border-border rounded-lg py-3 px-4 flex items-center justify-center space-x-3 hover:bg-muted transition-colors" data-event="click:googleAuth">
+                                <i class="fab fa-google text-red-500"></i>
+                                <span class="font-medium text-foreground">Continue with Google</span>
+                            </button>
+
+                            <div class="relative">
+                                <div class="absolute inset-0 flex items-center">
+                                    <div class="w-full border-t border-border"></div>
+                                </div>
+                                <div class="relative flex justify-center text-sm">
+                                    <span class="bg-card px-4 text-muted-foreground">or</span>
+                                </div>
+                            </div>
+
+                            <!-- Email Form -->
+                            <div class="space-y-4" data-mock="true">
+                                <input type="email" placeholder="Email address" class="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background">
+                                <input type="password" placeholder="Password" class="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background">
+                                
+                                <button class="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors" data-event="click:emailAuth">
+                                    Sign In
+                                </button>
+                            </div>
+
+                            <div class="text-center space-y-2">
+                                <a href="#" class="text-sm text-accent hover:underline" data-event="click:forgotPassword">Forgot password?</a>
+                                <p class="text-sm text-muted-foreground">
+                                    Don't have an account? 
+                                    <a href="#" class="text-primary hover:underline" data-event="click:showSignup">Sign up</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: LandingPage -->
+
+        <!-- Main Application -->
+        <!-- @COMPONENT: MainApp -->
+        <div id="main-app" class="page">
+            <!-- Shopping Cart Overlay -->
+            <!-- @COMPONENT: ShoppingCart -->
+            <div id="cart-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+                <div class="fixed right-0 top-0 h-full w-96 bg-card shadow-xl transform translate-x-full transition-transform duration-300" id="cart-panel">
+                    <div class="p-6 border-b border-border">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold">Shopping Cart</h3>
+                            <button class="text-muted-foreground hover:text-foreground" onclick="toggleCart()">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <!-- Cart Items -->
+                        <div class="space-y-4" data-mock="true">
+                            <div class="flex items-center space-x-4 p-4 bg-muted rounded-lg">
+                                <!-- Artisanal ceramic mug with warm brown glaze -->
+                                <img src="https://pixabay.com/get/g8115a89d80a51990e850d31421252cccdbd1e4e8a098afe9541930a480050611b361e6d49f2fafc0ef4f2c66adfefca84795390556ce99572968eb5134b4ea77_1280.jpg" alt="Ceramic mug" class="w-16 h-16 object-cover rounded-lg">
+                                <div class="flex-1">
+                                    <h4 class="font-medium">Handcrafted Ceramic Mug</h4>
+                                    <p class="text-sm text-muted-foreground">$24.99</p>
+                                </div>
+                                <button class="text-destructive hover:text-destructive/80">
+                                    <i class="fas fa-trash text-sm"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="flex items-center space-x-4 p-4 bg-muted rounded-lg">
+                                <!-- Minimalist wooden desk organizer with compartments -->
+                                <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" alt="Wooden organizer" class="w-16 h-16 object-cover rounded-lg">
+                                <div class="flex-1">
+                                    <h4 class="font-medium">Wooden Desk Organizer</h4>
+                                    <p class="text-sm text-muted-foreground">$39.99</p>
+                                </div>
+                                <button class="text-destructive hover:text-destructive/80">
+                                    <i class="fas fa-trash text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 border-t border-border bg-muted/30">
+                        <div class="space-y-4">
+                            <div class="flex justify-between text-lg font-semibold">
+                                <span>Total: $64.98</span>
+                            </div>
+                            <button class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors" onclick="showCheckout()">
+                                Checkout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: ShoppingCart -->
+
+            <!-- Checkout Modal -->
+            <!-- @COMPONENT: CheckoutModal -->
+            <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 z-60 hidden flex items-center justify-center p-4">
+                <div class="bg-card rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <h3 class="text-xl font-semibold mb-6">Checkout Details</h3>
+                    
+                    <div class="space-y-4" data-mock="true">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Country</label>
+                            <select class="w-full px-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                                <option>Select Country</option>
+                                <option>United States</option>
+                                <option>Canada</option>
+                                <option>United Kingdom</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Town/City</label>
+                            <input type="text" placeholder="Enter your town or city" class="w-full px-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Street Address</label>
+                            <textarea placeholder="Enter your street address" class="w-full px-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring h-20 resize-none"></textarea>
+                        </div>
+                        
+                        <div class="bg-accent/10 p-4 rounded-lg">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <i class="fas fa-truck text-accent"></i>
+                                <span class="font-medium">Payment Method</span>
+                            </div>
+                            <p class="text-sm text-muted-foreground">Pay on Delivery - Cash payment when your order arrives</p>
+                        </div>
+                        
+                        <div class="flex space-x-3 pt-4">
+                            <button class="flex-1 border border-border py-2 px-4 rounded-lg text-foreground hover:bg-muted transition-colors" onclick="closeCheckout()">
+                                Cancel
+                            </button>
+                            <button class="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors" data-event="click:completeOrder">
+                                Place Order
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: CheckoutModal -->
+
+            <!-- Main Layout -->
+            <div class="flex min-h-screen">
+                
+                <!-- Left Sidebar -->
+                <!-- @COMPONENT: Sidebar -->
+                <div class="w-64 bg-card border-r border-border p-6 fixed h-full overflow-y-auto">
+                    <div class="space-y-6">
+                        <!-- Logo -->
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                                <i class="fas fa-shopping-bag text-primary-foreground text-sm"></i>
+                            </div>
+                            <h1 class="text-xl font-bold text-primary">Eldady</h1>
+                        </div>
+
+                        <!-- Navigation -->
+                        <nav class="space-y-2">
+                            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg bg-primary text-primary-foreground" data-page="feed">
+                                <i class="fas fa-home w-5"></i>
+                                <span class="font-medium">Home</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors" data-page="explore">
+                                <i class="fas fa-compass w-5"></i>
+                                <span class="font-medium">Explore</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors" data-page="trending">
+                                <i class="fas fa-fire w-5"></i>
+                                <span class="font-medium">Trending</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors" data-page="vrooms">
+                                <i class="fas fa-store w-5"></i>
+                                <span class="font-medium">My Vroom</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors" data-page="messages">
+                                <i class="fas fa-comments w-5"></i>
+                                <span class="font-medium">Messages</span>
+                            </a>
+                            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted transition-colors" data-page="profile">
+                                <i class="fas fa-user w-5"></i>
+                                <span class="font-medium">Profile</span>
+                            </a>
+                        </nav>
+
+                        <!-- Cart Button -->
+                        <button class="w-full bg-accent text-accent-foreground py-3 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors flex items-center justify-center space-x-2" onclick="toggleCart()">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Cart</span>
+                            <span class="bg-accent-foreground text-accent px-2 py-1 rounded-full text-xs font-bold cart-badge" data-bind="cartItemCount">2</span>
+                        </button>
+
+                        <!-- Post Product Button -->
+                        <button class="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors" onclick="showPostModal()">
+                            <i class="fas fa-plus mr-2"></i>
+                            Post Product
+                        </button>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: Sidebar -->
+
+                <!-- Main Content -->
+                <div class="flex-1 ml-64">
+                    
+                    <!-- Feed Page -->
+                    <!-- @COMPONENT: FeedPage -->
+                    <div id="feed-page" class="page-content active">
+                        <div class="flex">
+                            
+                            <!-- Center Feed -->
+                            <div class="flex-1 max-w-2xl mx-auto border-x border-border min-h-screen">
+                                <!-- Header -->
+                                <div class="sticky top-0 bg-card/80 backdrop-blur-sm border-b border-border p-4">
+                                    <h2 class="text-xl font-bold">Home</h2>
+                                </div>
+
+                                <!-- Product Posts Feed -->
+                                <div class="divide-y divide-border" data-mock="true">
+                                    
+                                    <!-- @MAP: feedPosts.map(post => ( -->
+                                    <!-- Product Post 1 -->
+                                    <div class="p-6 hover:bg-muted/30 transition-colors product-card">
+                                        <div class="flex space-x-3">
+                                            <!-- Profile Picture -->
+                                            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                                            
+                                            <div class="flex-1 space-y-3">
+                                                <!-- User Info -->
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="font-semibold" data-bind="user.name">Alex Chen</span>
+                                                    <span class="text-muted-foreground text-sm" data-bind="user.handle">@alexdesigns</span>
+                                                    <span class="text-muted-foreground text-sm">·</span>
+                                                    <span class="text-muted-foreground text-sm" data-bind="post.timestamp">2h</span>
+                                                </div>
+
+                                                <!-- Product Content -->
+                                                <div class="space-y-3">
+                                                    <p data-bind="product.description">Just finished this minimalist desk organizer! Perfect for keeping your workspace clean and productive. Made from sustainable bamboo 🌱 #handmade #workspace #eco</p>
+                                                    
+                                                    <!-- Product Image -->
+                                                    <!-- Elegant bamboo desk organizer with multiple compartments on clean white desk -->
+                                                    <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=600&h=400" alt="Bamboo desk organizer" class="rounded-xl w-full object-cover">
+                                                    
+                                                    <!-- Product Details -->
+                                                    <div class="bg-secondary/50 p-4 rounded-lg">
+                                                        <div class="flex items-center justify-between mb-2">
+                                                            <h4 class="font-semibold text-lg" data-bind="product.name">Bamboo Desk Organizer</h4>
+                                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$39.99</span>
+                                                        </div>
+                                                        <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                            <i class="fas fa-cart-plus mr-2"></i>
+                                                            Add to Cart
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Social Actions -->
+                                                <div class="flex items-center justify-between pt-2">
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-accent transition-colors social-btn">
+                                                        <i class="far fa-heart"></i>
+                                                        <span data-bind="post.likes">24</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="far fa-comment"></i>
+                                                        <span data-bind="post.comments">8</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="fas fa-retweet"></i>
+                                                        <span data-bind="post.shares">12</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="far fa-bookmark"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Product Post 2 -->
+                                    <div class="p-6 hover:bg-muted/30 transition-colors product-card">
+                                        <div class="flex space-x-3">
+                                            <!-- Profile Picture -->
+                                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                                            
+                                            <div class="flex-1 space-y-3">
+                                                <!-- User Info -->
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="font-semibold" data-bind="user.name">Sarah Martinez</span>
+                                                    <span class="text-muted-foreground text-sm" data-bind="user.handle">@sarahcrafts</span>
+                                                    <span class="text-muted-foreground text-sm">·</span>
+                                                    <span class="text-muted-foreground text-sm" data-bind="post.timestamp">4h</span>
+                                                </div>
+
+                                                <!-- Product Content -->
+                                                <div class="space-y-3">
+                                                    <p data-bind="product.description">Hand-knitted wool scarf perfect for the upcoming season! Soft, warm, and available in 5 different colors. Each piece is unique! #handknitted #wool #fashion</p>
+                                                    
+                                                    <!-- Product Image -->
+                                                    <!-- Cozy hand-knitted wool scarf in warm terracotta color laid flat on rustic surface -->
+                                                    <img src="https://images.unsplash.com/photo-1601924994987-69e26d50dc26?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=600&h=400" alt="Hand-knitted wool scarf" class="rounded-xl w-full object-cover">
+                                                    
+                                                    <!-- Product Details -->
+                                                    <div class="bg-secondary/50 p-4 rounded-lg">
+                                                        <div class="flex items-center justify-between mb-2">
+                                                            <h4 class="font-semibold text-lg" data-bind="product.name">Hand-knitted Wool Scarf</h4>
+                                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$45.00</span>
+                                                        </div>
+                                                        <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                            <i class="fas fa-cart-plus mr-2"></i>
+                                                            Add to Cart
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Social Actions -->
+                                                <div class="flex items-center justify-between pt-2">
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-accent transition-colors social-btn">
+                                                        <i class="far fa-heart"></i>
+                                                        <span data-bind="post.likes">31</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="far fa-comment"></i>
+                                                        <span data-bind="post.comments">15</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="fas fa-retweet"></i>
+                                                        <span data-bind="post.shares">7</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="far fa-bookmark"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Product Post 3 -->
+                                    <div class="p-6 hover:bg-muted/30 transition-colors product-card">
+                                        <div class="flex space-x-3">
+                                            <!-- Profile Picture -->
+                                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                                            
+                                            <div class="flex-1 space-y-3">
+                                                <!-- User Info -->
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="font-semibold" data-bind="user.name">Mike Thompson</span>
+                                                    <span class="text-muted-foreground text-sm" data-bind="user.handle">@mikemakes</span>
+                                                    <span class="text-muted-foreground text-sm">·</span>
+                                                    <span class="text-muted-foreground text-sm" data-bind="post.timestamp">6h</span>
+                                                </div>
+
+                                                <!-- Product Content -->
+                                                <div class="space-y-3">
+                                                    <p data-bind="product.description">Custom leather wallet with your initials! Premium quality leather that ages beautifully. Perfect gift for yourself or loved ones 💼 #leather #wallet #custom #giftidea</p>
+                                                    
+                                                    <!-- Product Image -->
+                                                    <!-- Premium brown leather wallet with embossed initials on marble surface -->
+                                                    <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=600&h=400" alt="Custom leather wallet" class="rounded-xl w-full object-cover">
+                                                    
+                                                    <!-- Product Details -->
+                                                    <div class="bg-secondary/50 p-4 rounded-lg">
+                                                        <div class="flex items-center justify-between mb-2">
+                                                            <h4 class="font-semibold text-lg" data-bind="product.name">Custom Leather Wallet</h4>
+                                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$75.00</span>
+                                                        </div>
+                                                        <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                            <i class="fas fa-cart-plus mr-2"></i>
+                                                            Add to Cart
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Social Actions -->
+                                                <div class="flex items-center justify-between pt-2">
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-accent transition-colors social-btn">
+                                                        <i class="far fa-heart"></i>
+                                                        <span data-bind="post.likes">67</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="far fa-comment"></i>
+                                                        <span data-bind="post.comments">23</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="fas fa-retweet"></i>
+                                                        <span data-bind="post.shares">18</span>
+                                                    </button>
+                                                    <button class="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors social-btn">
+                                                        <i class="far fa-bookmark"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- @END_MAP )) -->
+
+                                </div>
+                            </div>
+
+                            <!-- Right Sidebar -->
+                            <!-- @COMPONENT: RightSidebar -->
+                            <div class="w-80 p-4 space-y-6">
+                                
+                                <!-- Search -->
+                                <div class="bg-muted rounded-full p-3">
+                                    <div class="flex items-center space-x-3">
+                                        <i class="fas fa-search text-muted-foreground"></i>
+                                        <input type="text" placeholder="Search products and vrooms..." class="bg-transparent outline-none flex-1 text-sm" data-mock="true">
+                                    </div>
+                                </div>
+
+                                <!-- Trending Products -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden">
+                                    <div class="p-4 border-b border-border">
+                                        <h3 class="text-lg font-semibold">Trending Products</h3>
+                                    </div>
+                                    <div class="divide-y divide-border" data-mock="true">
+                                        <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <p class="font-medium">#handmade</p>
+                                                    <p class="text-sm text-muted-foreground">2.4K products</p>
+                                                </div>
+                                                <i class="fas fa-trending-up text-accent"></i>
+                                            </div>
+                                        </div>
+                                        <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <p class="font-medium">#vintage</p>
+                                                    <p class="text-sm text-muted-foreground">1.8K products</p>
+                                                </div>
+                                                <i class="fas fa-trending-up text-accent"></i>
+                                            </div>
+                                        </div>
+                                        <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <p class="font-medium">#furniture</p>
+                                                    <p class="text-sm text-muted-foreground">1.2K products</p>
+                                                </div>
+                                                <i class="fas fa-trending-up text-accent"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Trending Vrooms -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden">
+                                    <div class="p-4 border-b border-border">
+                                        <h3 class="text-lg font-semibold">Popular Vrooms</h3>
+                                    </div>
+                                    <div class="divide-y divide-border" data-mock="true">
+                                        <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+                                            <div class="flex items-center space-x-3">
+                                                <!-- Artisan workspace with pottery wheel and handmade ceramics -->
+                                                <img src="https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="Artisan Ceramics vroom" class="w-10 h-10 rounded-lg object-cover">
+                                                <div class="flex-1">
+                                                    <p class="font-medium">Artisan Ceramics</p>
+                                                    <p class="text-sm text-muted-foreground">156 products</p>
+                                                </div>
+                                                <button class="text-primary hover:text-primary/80 text-sm font-medium">Follow</button>
+                                            </div>
+                                        </div>
+                                        <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+                                            <div class="flex items-center space-x-3">
+                                                <!-- Modern minimalist home decor display with clean white shelves -->
+                                                <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="Modern Home vroom" class="w-10 h-10 rounded-lg object-cover">
+                                                <div class="flex-1">
+                                                    <p class="font-medium">Modern Home</p>
+                                                    <p class="text-sm text-muted-foreground">89 products</p>
+                                                </div>
+                                                <button class="text-primary hover:text-primary/80 text-sm font-medium">Follow</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_COMPONENT: RightSidebar -->
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: FeedPage -->
+
+                    <!-- Vroom Page -->
+                    <!-- @COMPONENT: VroomPage -->
+                    <div id="vroom-page" class="page-content">
+                        <div class="max-w-6xl mx-auto p-6">
+                            <!-- Vroom Header -->
+                            <div class="bg-card rounded-xl p-6 mb-6 border border-border">
+                                <div class="flex items-start space-x-4">
+                                    <!-- Modern artisan workshop with pottery wheel and handcrafted ceramics on wooden shelves -->
+                                    <img src="https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=100" alt="Artisan Ceramics vroom" class="w-20 h-20 rounded-xl object-cover">
+                                    <div class="flex-1">
+                                        <h1 class="text-2xl font-bold mb-2" data-bind="vroom.name">Artisan Ceramics</h1>
+                                        <p class="text-muted-foreground mb-3" data-bind="vroom.description">Handcrafted ceramic pieces made with love and attention to detail. Each item is unique and tells its own story.</p>
+                                        <div class="flex items-center space-x-6 text-sm text-muted-foreground">
+                                            <span data-bind="vroom.productCount">156 products</span>
+                                            <span data-bind="vroom.followers">1.2K followers</span>
+                                            <span data-bind="vroom.views">45.8K views</span>
+                                        </div>
+                                    </div>
+                                    <button class="bg-primary text-primary-foreground py-2 px-6 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                                        <i class="fas fa-user-plus mr-2"></i>
+                                        Follow
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Product Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-mock="true">
+                                
+                                <!-- @MAP: vroomProducts.map(product => ( -->
+                                <!-- Product Card 1 -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow product-card">
+                                    <!-- Beautiful handcrafted ceramic bowl with earthy glaze on rustic wooden surface -->
+                                    <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300" alt="Ceramic bowl" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <h3 class="font-semibold mb-2" data-bind="product.name">Rustic Ceramic Bowl</h3>
+                                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Perfect for serving salads or as a decorative piece. Features natural earth tones.</p>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$28.99</span>
+                                            <div class="flex items-center space-x-1 text-sm text-muted-foreground">
+                                                <i class="fas fa-heart text-accent"></i>
+                                                <span data-bind="product.likes">42</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                <i class="fas fa-cart-plus mr-2"></i>
+                                                Add to Cart
+                                            </button>
+                                            <button class="w-full border border-border py-2 px-4 rounded-lg font-medium hover:bg-muted transition-colors" data-event="click:quickBuy">
+                                                <i class="fas fa-bolt mr-2"></i>
+                                                Buy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Card 2 -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow product-card">
+                                    <!-- Elegant ceramic vase with geometric patterns in warm terracotta tones -->
+                                    <img src="https://images.unsplash.com/photo-1610701596061-2ecf227e85b2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300" alt="Ceramic vase" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <h3 class="font-semibold mb-2" data-bind="product.name">Geometric Ceramic Vase</h3>
+                                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Modern geometric design meets traditional craftsmanship. Perfect centerpiece.</p>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$52.00</span>
+                                            <div class="flex items-center space-x-1 text-sm text-muted-foreground">
+                                                <i class="fas fa-heart text-accent"></i>
+                                                <span data-bind="product.likes">28</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                <i class="fas fa-cart-plus mr-2"></i>
+                                                Add to Cart
+                                            </button>
+                                            <button class="w-full border border-border py-2 px-4 rounded-lg font-medium hover:bg-muted transition-colors" data-event="click:quickBuy">
+                                                <i class="fas fa-bolt mr-2"></i>
+                                                Buy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Card 3 -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow product-card">
+                                    <!-- Set of handmade ceramic mugs with unique glazing patterns arranged on wooden table -->
+                                    <img src="https://pixabay.com/get/g08ee2f1805019679239951ce4ce27adbfe2e850d35be3454fc4426ad87fe32fdae0ae6e14f1b6a42439ba728cbaa135bd1ef50363383401e77fc49b43155f034_1280.jpg" alt="Ceramic mug set" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <h3 class="font-semibold mb-2" data-bind="product.name">Ceramic Mug Set</h3>
+                                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Set of 4 unique mugs, each with its own character. Perfect for morning coffee.</p>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$89.99</span>
+                                            <div class="flex items-center space-x-1 text-sm text-muted-foreground">
+                                                <i class="fas fa-heart text-accent"></i>
+                                                <span data-bind="product.likes">91</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                <i class="fas fa-cart-plus mr-2"></i>
+                                                Add to Cart
+                                            </button>
+                                            <button class="w-full border border-border py-2 px-4 rounded-lg font-medium hover:bg-muted transition-colors" data-event="click:quickBuy">
+                                                <i class="fas fa-bolt mr-2"></i>
+                                                Buy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Card 4 -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow product-card">
+                                    <!-- Artisan ceramic plates with natural earth tone glazes stacked elegantly -->
+                                    <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300" alt="Ceramic dinner plates" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <h3 class="font-semibold mb-2" data-bind="product.name">Dinner Plate Set</h3>
+                                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Beautiful dinner plates with natural glaze. Set of 6 plates in earthy tones.</p>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$124.99</span>
+                                            <div class="flex items-center space-x-1 text-sm text-muted-foreground">
+                                                <i class="fas fa-heart text-accent"></i>
+                                                <span data-bind="product.likes">73</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                <i class="fas fa-cart-plus mr-2"></i>
+                                                Add to Cart
+                                            </button>
+                                            <button class="w-full border border-border py-2 px-4 rounded-lg font-medium hover:bg-muted transition-colors" data-event="click:quickBuy">
+                                                <i class="fas fa-bolt mr-2"></i>
+                                                Buy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Card 5 -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow product-card">
+                                    <!-- Handcrafted ceramic planter with succulent plant in modern setting -->
+                                    <img src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300" alt="Ceramic planter" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <h3 class="font-semibold mb-2" data-bind="product.name">Ceramic Planter</h3>
+                                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Handmade planter perfect for succulents and small plants. Drainage hole included.</p>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$34.99</span>
+                                            <div class="flex items-center space-x-1 text-sm text-muted-foreground">
+                                                <i class="fas fa-heart text-accent"></i>
+                                                <span data-bind="product.likes">55</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                <i class="fas fa-cart-plus mr-2"></i>
+                                                Add to Cart
+                                            </button>
+                                            <button class="w-full border border-border py-2 px-4 rounded-lg font-medium hover:bg-muted transition-colors" data-event="click:quickBuy">
+                                                <i class="fas fa-bolt mr-2"></i>
+                                                Buy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Product Card 6 -->
+                                <div class="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow product-card">
+                                    <!-- Elegant ceramic tea set with teapot and cups in warm earth tones -->
+                                    <img src="https://pixabay.com/get/g6218dceef70f3496995bfdfb0076bf47103f05e4c32db03149d53af44d3bd00085c4450a6ef2f0521d94986809c72e130a986258907706ed8b1d388ea6314258_1280.jpg" alt="Ceramic tea set" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <h3 class="font-semibold mb-2" data-bind="product.name">Traditional Tea Set</h3>
+                                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Complete tea set with teapot and 4 cups. Perfect for afternoon tea ceremonies.</p>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <span class="text-xl font-bold text-primary" data-bind="product.price">$165.00</span>
+                                            <div class="flex items-center space-x-1 text-sm text-muted-foreground">
+                                                <i class="fas fa-heart text-accent"></i>
+                                                <span data-bind="product.likes">84</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-2">
+                                            <button class="w-full bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors" data-event="click:addToCart">
+                                                <i class="fas fa-cart-plus mr-2"></i>
+                                                Add to Cart
+                                            </button>
+                                            <button class="w-full border border-border py-2 px-4 rounded-lg font-medium hover:bg-muted transition-colors" data-event="click:quickBuy">
+                                                <i class="fas fa-bolt mr-2"></i>
+                                                Buy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP )) -->
+
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: VroomPage -->
+
+                    <!-- Messages Page -->
+                    <!-- @COMPONENT: MessagesPage -->
+                    <div id="messages-page" class="page-content">
+                        <div class="flex h-screen">
+                            <!-- Conversations List -->
+                            <div class="w-80 border-r border-border bg-card">
+                                <div class="p-4 border-b border-border">
+                                    <h2 class="text-xl font-semibold">Messages</h2>
+                                </div>
+                                <div class="divide-y divide-border" data-mock="true">
+                                    <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer bg-muted/20">
+                                        <div class="flex items-center space-x-3">
+                                            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between">
+                                                    <p class="font-medium" data-bind="conversation.userName">Alex Chen</p>
+                                                    <span class="text-xs text-muted-foreground" data-bind="conversation.lastMessageTime">2m</span>
+                                                </div>
+                                                <p class="text-sm text-muted-foreground truncate" data-bind="conversation.lastMessage">Hi! I'm interested in buying the bamboo organizer...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+                                        <div class="flex items-center space-x-3">
+                                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between">
+                                                    <p class="font-medium" data-bind="conversation.userName">Sarah Martinez</p>
+                                                    <span class="text-xs text-muted-foreground" data-bind="conversation.lastMessageTime">1h</span>
+                                                </div>
+                                                <p class="text-sm text-muted-foreground truncate" data-bind="conversation.lastMessage">Thank you for your purchase! 😊</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Chat Area -->
+                            <div class="flex-1 flex flex-col">
+                                <!-- Chat Header -->
+                                <div class="p-4 border-b border-border bg-card">
+                                    <div class="flex items-center space-x-3">
+                                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                                        <div>
+                                            <p class="font-medium" data-bind="activeChat.userName">Alex Chen</p>
+                                            <p class="text-sm text-muted-foreground">About: Bamboo Desk Organizer</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Messages -->
+                                <div class="flex-1 overflow-y-auto p-4 space-y-4" data-mock="true">
+                                    <div class="flex justify-start">
+                                        <div class="bg-muted p-3 rounded-lg max-w-xs">
+                                            <p class="text-sm" data-bind="message.content">Hi! I'm interested in buying the bamboo organizer. Is it still available?</p>
+                                            <span class="text-xs text-muted-foreground" data-bind="message.timestamp">2:30 PM</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex justify-end">
+                                        <div class="bg-primary p-3 rounded-lg max-w-xs">
+                                            <p class="text-sm text-primary-foreground" data-bind="message.content">Yes! It's available. Would you like me to reserve it for you?</p>
+                                            <span class="text-xs text-primary-foreground/80" data-bind="message.timestamp">2:32 PM</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex justify-start">
+                                        <div class="bg-muted p-3 rounded-lg max-w-xs">
+                                            <p class="text-sm" data-bind="message.content">That would be great! Can you tell me more about the dimensions?</p>
+                                            <span class="text-xs text-muted-foreground" data-bind="message.timestamp">2:35 PM</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Message Input -->
+                                <div class="p-4 border-t border-border">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="text" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-input rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true">
+                                        <button class="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/90 transition-colors" data-event="click:sendMessage">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: MessagesPage -->
+
+                </div>
+            </div>
+
+        </div>
+        <!-- @END_COMPONENT: MainApp -->
+
+        <!-- Post Product Modal -->
+        <!-- @COMPONENT: PostProductModal -->
+        <div id="post-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-card rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold">Post New Product</h3>
+                    <button class="text-muted-foreground hover:text-foreground" onclick="closePostModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4" data-mock="true">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Product Name</label>
+                        <input type="text" placeholder="Enter product name..." class="w-full px-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Description & Tags</label>
+                        <textarea placeholder="Describe your product and add hashtags..." class="w-full px-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring h-32 resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Price ($)</label>
+                        <input type="number" placeholder="0.00" step="0.01" class="w-full px-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Product Images</label>
+                        <div class="border-2 border-dashed border-input rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer" data-implementation="Use FileUpload component here">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-muted-foreground mb-2"></i>
+                            <p class="text-muted-foreground">Click to upload images or drag and drop</p>
+                            <p class="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-4">
+                        <button class="flex-1 border border-border py-2 px-4 rounded-lg text-foreground hover:bg-muted transition-colors" onclick="closePostModal()">
+                            Cancel
+                        </button>
+                        <button class="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors" data-event="click:postProduct">
+                            Post Product
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: PostProductModal -->
+
+    </div>
+    <!-- @END_COMPONENT: AppContainer -->
+
+    <script>
+        (function() {
+            // TODO: Implement business logic, API calls, and state management
+            
+            // Page Navigation
+            function showPage(pageId) {
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                document.getElementById(pageId).classList.add('active');
+            }
+
+            // Cart functionality
+            window.toggleCart = function() {
+                const overlay = document.getElementById('cart-overlay');
+                const panel = document.getElementById('cart-panel');
+                
+                if (overlay.classList.contains('hidden')) {
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => {
+                        panel.classList.remove('translate-x-full');
+                    }, 10);
+                } else {
+                    panel.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                    }, 300);
+                }
+            };
+
+            // Checkout functionality
+            window.showCheckout = function() {
+                document.getElementById('checkout-modal').classList.remove('hidden');
+            };
+
+            window.closeCheckout = function() {
+                document.getElementById('checkout-modal').classList.add('hidden');
+            };
+
+            // Post modal functionality
+            window.showPostModal = function() {
+                document.getElementById('post-modal').classList.remove('hidden');
+            };
+
+            window.closePostModal = function() {
+                document.getElementById('post-modal').classList.add('hidden');
+            };
+
+            // Navigation handlers
+            document.querySelectorAll('[data-page]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    
+                    // Update active state in navigation
+                    document.querySelectorAll('[data-page]').forEach(navLink => {
+                        navLink.classList.remove('bg-primary', 'text-primary-foreground');
+                        navLink.classList.add('hover:bg-muted');
+                    });
+                    this.classList.add('bg-primary', 'text-primary-foreground');
+                    this.classList.remove('hover:bg-muted');
+
+                    // Show appropriate content
+                    document.querySelectorAll('.page-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    if (page === 'feed') {
+                        document.getElementById('feed-page').classList.add('active');
+                    } else if (page === 'vrooms') {
+                        document.getElementById('vroom-page').classList.add('active');
+                    } else if (page === 'messages') {
+                        document.getElementById('messages-page').classList.add('active');
+                    }
+                    // TODO: Implement other page navigations
+                });
+            });
+
+            // Simulate login to show main app
+            setTimeout(() => {
+                document.getElementById('landing-page').classList.remove('active');
+                document.getElementById('main-app').classList.add('active');
+            }, 3000);
+            
+            // Close modals when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target.id === 'cart-overlay') {
+                    window.toggleCart();
+                }
+                if (e.target.id === 'checkout-modal') {
+                    window.closeCheckout();
+                }
+                if (e.target.id === 'post-modal') {
+                    window.closePostModal();
+                }
+            });
+        })();
+    </script>
+
+</body>
+</html>

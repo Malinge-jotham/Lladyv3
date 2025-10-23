@@ -18,11 +18,18 @@ import ProductDetailPage from "@/components/product/ProductDetailPage";
 import HashtagPage from "@/pages/hashtags/[tag]";
 import VroomDetailsPage from "@/pages/vrooms/[id]";
 
+// 🔥 import the new policy pages
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
+      {/* Public routes accessible to all users */}
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (

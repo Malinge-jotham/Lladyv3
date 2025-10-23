@@ -1,96 +1,289 @@
+
+import { createClient } from "@supabase/supabase-js";
+import eldadyLogo from "@/assets/ELDADY-LOGO.png";
+
+  import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FaShoppingBag, FaUsers, FaComments, FaArrowRight } from "react-icons/fa";
-
+import { Input } from "@/components/ui/input";
+//import { supabase } from "@/lib/supabaseClient";
+import { FaArrowRight } from "react-icons/fa";
+// --- Initialize Supabase client ---
+export const supabase = createClient("https://rhebmwmxtiyuazljugfl.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZWJtd214dGl5dWF6bGp1Z2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNTM0OTEsImV4cCI6MjA3NjYyOTQ5MX0.UTwY8C27ED0QYBJzNfAgl-pOJ0aIn98KwQQcGMXdjG8")
+//profiles
 export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/login";
+  const [isSignup, setIsSignup] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  // Login state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  
+  // Signup state
+  const [firstName, setFirstName] = useState("");
+  const [secondName, setSecondName] = useState("");
+  const [gender, setGender] = useState("");
+  const [dob, setDob] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [country, setCountry] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+
+  const handleLogin = async () => {
+    if (!loginEmail || !loginPassword) {
+      alert("Please enter both email and password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+      if (error) throw error;
+      // Login successful - app will redirect based on your auth flow
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async () => {
+    if (!firstName || !secondName || !signupEmail || !signupPassword) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: signupEmail,
+        password: signupPassword,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // 2. Create profile in profiles table
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            first_name: firstName,
+            last_name: secondName,
+            gender: gender,
+            dob: dob || null,
+            mobile: mobile,
+            country: country
+          });
+
+        if (profileError) throw profileError;
+
+        alert("Account created successfully! Please check your email for verification.");
+        setIsSignup(false); // Switch back to login
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!loginEmail) {
+      alert("Please enter your email address");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(loginEmail);
+      if (error) throw error;
+      alert("Password reset email sent!");
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
-      <div className="container mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent" data-testid="app-title">
-            Welcome to Eldady
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto" data-testid="app-subtitle">
-            The social commerce platform where you can discover, share, and sell amazing products 
-            while connecting with a vibrant community of creators and shoppers.
-          </p>
-          <Button 
-            onClick={handleLogin}
-            size="lg"
-            className="text-lg px-8 py-3"
-            data-testid="button-login"
-          >
-            Get Started
-            <FaArrowRight className="ml-2" />
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center p-4">
+      <Card className="w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl">
+        <div className="grid md:grid-cols-2 min-h-[600px]">
+          {/* Left Side - Logo */}
+          <div className="bg-gradient-to-br from-primary/10 to-secondary/10 flex flex-col items-center justify-center p-8">
+            <div className="text-center">
+              <img 
+                src={eldadyLogo} 
+                alt="Eldady Logo" 
+                className="w-32 h-32 mx-auto mb-6 object-contain"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <h1 className="text-4xl font-bold text-primary mb-4">Ldady</h1>
+              <p className="text-xl text-muted-foreground font-medium">Excelio in it</p>
+            </div>
+          </div>
 
-        {/* Features */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <Card className="text-center hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
-                <FaShoppingBag className="text-2xl text-primary" />
+          {/* Right Side - Auth Forms */}
+          <div className="p-8 flex flex-col justify-center">
+            {!isSignup ? (
+              /* Login Form */
+              <div className="w-full max-w-md mx-auto">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle className="text-2xl">Sign In</CardTitle>
+                  <CardDescription>
+                    Welcome back to your Eldady account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-0 pb-0 space-y-4">
+                  <Input
+                    placeholder="Email"
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    className="py-2"
+                  />
+                  <Input
+                    placeholder="Password"
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="py-2"
+                  />
+                  <Button
+                    onClick={handleLogin}
+                    disabled={loading}
+                    className="w-full text-lg py-2 mt-4"
+                  >
+                    {loading ? "Please wait..." : "Sign In"}
+                    <FaArrowRight className="ml-2" />
+                  </Button>
+                  
+                  <div className="text-sm text-center space-y-2 pt-4">
+                    <p>
+                      Don't have an account?{" "}
+                      <button
+                        className="text-primary underline font-medium"
+                        onClick={() => setIsSignup(true)}
+                      >
+                        Sign Up
+                      </button>
+                    </p>
+                    <p>
+                      <button 
+                        className="text-primary underline font-medium"
+                        onClick={handleForgotPassword}
+                      >
+                        Click here if forgot password
+                      </button>
+                    </p>
+                  </div>
+                </CardContent>
               </div>
-              <CardTitle>Shop & Sell</CardTitle>
-              <CardDescription>
-                Discover unique products and showcase your own creations to a global audience.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="text-center hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
-                <FaUsers className="text-2xl text-primary" />
+            ) : (
+              /* Signup Form */
+              <div className="w-full max-w-md mx-auto">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle className="text-2xl">Sign Up</CardTitle>
+                  <CardDescription>
+                    Create your Eldady account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-0 pb-0 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="First Name *"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="py-2"
+                    />
+                    <Input
+                      placeholder="Second Name *"
+                      value={secondName}
+                      onChange={(e) => setSecondName(e.target.value)}
+                      className="py-2"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <select 
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                    
+                    <Input
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      className="py-2"
+                    />
+                  </div>
+                  
+                  <Input
+                    placeholder="Mobile Number"
+                    type="tel"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    className="py-2"
+                  />
+                  
+                  <Input
+                    placeholder="Email *"
+                    type="email"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    className="py-2"
+                  />
+                  
+                  <Input
+                    placeholder="Country of Residence"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="py-2"
+                  />
+                  
+                  <Input
+                    placeholder="Password *"
+                    type="password"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    className="py-2"
+                  />
+                  
+                  <Button
+                    onClick={handleSignup}
+                    disabled={loading}
+                    className="w-full text-lg py-2 mt-2"
+                  >
+                    {loading ? "Creating Account..." : "Sign Up"}
+                    <FaArrowRight className="ml-2" />
+                  </Button>
+                  
+                  <p className="text-sm text-center mt-3">
+                    Already have an account?{" "}
+                    <button
+                      className="text-primary underline font-medium"
+                      onClick={() => setIsSignup(false)}
+                    >
+                      Sign In
+                    </button>
+                  </p>
+                </CardContent>
               </div>
-              <CardTitle>Connect</CardTitle>
-              <CardDescription>
-                Build meaningful connections with other creators, sellers, and shoppers in our community.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="text-center hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
-                <FaComments className="text-2xl text-primary" />
-              </div>
-              <CardTitle>Engage</CardTitle>
-              <CardDescription>
-                Share your thoughts, ask questions, and get recommendations from the community.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+            )}
+          </div>
         </div>
-
-        {/* Call to Action */}
-        <div className="text-center">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle className="text-2xl">Ready to Join?</CardTitle>
-              <CardDescription className="text-lg">
-                Start your journey with Eldady today and become part of our growing community.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={handleLogin}
-                size="lg"
-                className="w-full text-lg py-3"
-                data-testid="button-join-now"
-              >
-                Join Now - It's Free!
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      </Card>
     </div>
   );
 }

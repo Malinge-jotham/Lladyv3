@@ -59,46 +59,56 @@ export default function ChatArea({ userId }: ChatAreaProps) {
     },
   });
 
-  // WebSocket connection
-  useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
+// WebSocket connection
+useEffect(() => {
+  if (!userId) return;
 
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-      setSocket(ws);
-    };
+  // Detect correct protocol
+  const isSecure = window.location.protocol === "https:";
+  const protocol = isSecure ? "wss:" : "ws:";
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "message") {
-          // Only refresh if the message is relevant to current conversation
-          if (data.message.senderId === userId || data.message.receiverId === userId) {
-            queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
-          }
-          // Always refresh conversations list for new message notifications
-          queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+  // Use backend port (5000) instead of frontend (5173)
+  const backendHost =
+    import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, "") || "localhost:5000";
+
+  const wsUrl = `${protocol}//${backendHost}/ws?userId=${userId}`;
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log("✅ WebSocket connected:", wsUrl);
+    setSocket(ws);
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === "message") {
+        // Only refresh if the message is relevant to current conversation
+        if (data.message.senderId === userId || data.message.receiverId === userId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
         }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+        // Always refresh conversations list for new message notifications
+        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       }
-    };
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+    }
+  };
 
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");
-      setSocket(null);
-    };
+  ws.onclose = () => {
+    console.log("❌ WebSocket disconnected");
+    setSocket(null);
+  };
 
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
+  ws.onerror = (error) => {
+    console.error("⚠️ WebSocket error:", error);
+  };
 
-    return () => {
-      ws.close();
-    };
-  }, [userId, queryClient]);
+  return () => {
+    ws.close();
+  };
+}, [userId, queryClient]);
+
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

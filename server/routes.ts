@@ -7,23 +7,25 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { insertProductSchema, insertVroomSchema, insertOrderSchema, insertMessageSchema, insertProductCommentSchema, updateProfileSchema } from "@shared/schema";
 import { z } from "zod";
+import { checkDomainOfScale } from "recharts/types/util/ChartUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
+  console.log("reached");
+  try {
+    console.log(req.session)
+    const userId = req.session.user.id; // ✅ Use this instead
+    const user = await storage.getUser(userId);
+    res.json(user);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Failed to fetch user" });
+  }
+});
+//messages/start
   // Get user details by ID (for messaging and profiles)
   app.get('/api/users/:userId', isAuthenticated, async (req: any, res) => {
     try {
@@ -45,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/search/:query', isAuthenticated, async (req: any, res) => {
     try {
       const query = req.params.query;
-      const currentUserId = req.user.claims.sub;
+      const currentUserId = req.user.id;
 
       if (!query || query.length < 2) {
         return res.status(400).json({ message: "Query must be at least 2 characters" });
@@ -62,7 +64,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile routes
   app.get('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      console.log(req.user)
+      const userId = req.user.id;
       const profileData = await storage.getUserProfile(userId);
 
       if (!profileData) {
@@ -78,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const profileData = updateProfileSchema.parse(req.body);
 
       const updatedUser = await storage.updateProfile(userId, profileData);
@@ -94,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/products/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const products = await storage.getProductsByUser(userId);
       res.json(products);
     } catch (error) {
@@ -105,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/vrooms/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const vrooms = await storage.getVroomsByUser(userId);
       res.json(vrooms);
     } catch (error) {
@@ -128,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/profile/image', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { imageURL, type } = req.body;
 
       if (!imageURL || !type) {
@@ -222,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users/search', isAuthenticated, async (req: any, res) => {
     try {
       const query = req.query.q as string;
-      const currentUserId = req.user.claims.sub;
+      const currentUserId = req.user.id;
       if (!query) {
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
@@ -269,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/products', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertProductSchema.parse(req.body);
 
       const product = await storage.createProduct(userId, validatedData);
@@ -285,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/products/:id/like', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.likeProduct(userId, req.params.id);
       res.status(200).json({ message: "Product liked" });
     } catch (error) {
@@ -296,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/products/:id/like', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.unlikeProduct(userId, req.params.id);
       res.status(200).json({ message: "Product unliked" });
     } catch (error) {
@@ -308,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check if product is liked by user
   app.get('/api/products/:id/isLiked', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const isLiked = await storage.isProductLiked(userId, req.params.id);
       res.json(isLiked);
     } catch (error) {
@@ -320,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product comment endpoints
   app.post('/api/products/:id/comment', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertProductCommentSchema.parse({
         ...req.body,
         productId: req.params.id
@@ -357,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/products/:id/share', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.shareProduct(userId, req.params.id);
       res.status(200).json({ message: "Product shared" });
     } catch (error) {
@@ -462,7 +465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/vrooms', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertVroomSchema.parse(req.body);
 
       const vroom = await storage.createVroom(userId, validatedData);
@@ -478,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/vrooms/:id/follow', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.followVroom(userId, req.params.id);
       res.status(200).json({ message: "Vroom followed" });
     } catch (error) {
@@ -489,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/vrooms/:id/follow', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.unfollowVroom(userId, req.params.id);
       res.status(200).json({ message: "Vroom unfollowed" });
     } catch (error) {
@@ -501,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's vrooms
   app.get('/api/vrooms/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const vrooms = await storage.getVroomsByUser(userId);
       res.json(vrooms);
     } catch (error) {
@@ -513,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete vroom
   app.delete('/api/vrooms/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.deleteVroom(req.params.id, userId);
       res.status(200).json({ message: "Vroom deleted successfully" });
     } catch (error) {
@@ -525,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add product to vroom
   app.post('/api/vrooms/:id/products', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { productId } = req.body;
 
       if (!productId) {
@@ -543,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Remove product from vroom
   app.delete('/api/vrooms/:id/products/:productId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.removeProductFromVroom(req.params.productId, req.params.id, userId);
       res.status(200).json({ message: "Product removed from vroom" });
     } catch (error) {
@@ -574,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         req.body.imageURL,
         {
-          owner: req.user.claims.sub,
+          owner: req.user.id,
           visibility: "public",
         },
       );
@@ -592,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bookmark a product
   app.post("/api/products/:id/bookmark", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.bookmarkProduct(userId, req.params.id);
       res.status(200).json({ message: "Product bookmarked" });
     } catch (error) {
@@ -604,7 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Remove bookmark
   app.delete("/api/products/:id/bookmark", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.unbookmarkProduct(userId, req.params.id);
       res.status(200).json({ message: "Product unbookmarked" });
     } catch (error) {
@@ -616,7 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check if product is bookmarked by user
   app.get('/api/products/:id/isBookmarked', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const isBookmarked = await storage.isProductBookmarked(userId, req.params.id);
       res.json(isBookmarked);
     } catch (error) {
@@ -628,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's bookmarked products
   app.get("/api/products/bookmarked", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookmarked = await storage.getBookmarkedProducts(userId);
       res.json(bookmarked);
     } catch (error) {
@@ -641,7 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cart routes
   app.get('/api/cart', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const cartItems = await storage.getCartItems(userId);
 
       // Get product details for each cart item
@@ -661,7 +664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/cart/:productId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { quantity = 1 } = req.body;
       await storage.addToCart(userId, req.params.productId, quantity);
       res.status(200).json({ message: "Product added to cart" });
@@ -673,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/cart/:productId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.removeFromCart(userId, req.params.productId);
       res.status(200).json({ message: "Product removed from cart" });
     } catch (error) {
@@ -685,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Order routes
   app.post('/api/orders', isAuthenticated, async (req: any, res) => {
     try {
-      const buyerId = req.user.claims.sub;
+      const buyerId = req.user.id;
       const validatedData = insertOrderSchema.parse(req.body);
 
       const order = await storage.createOrder(buyerId, validatedData);
@@ -705,7 +708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/orders', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const orders = await storage.getOrders(userId);
 
       // Get product and user details for each order
@@ -728,7 +731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Message routes - SECURE VERSION WITH PROPER AUTHORIZATION
   app.get('/api/messages/conversations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const conversations = await storage.getUserConversations(userId); // Only user's conversations
 
       // Get user details for each conversation
@@ -753,7 +756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get messages by conversation ID - WITH AUTHORIZATION
   app.get('/api/messages/conversation/:conversationId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const conversationId = req.params.conversationId;
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
@@ -783,7 +786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get messages by user ID - WITH AUTHORIZATION
   app.get('/api/messages/user/:otherUserId', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUserId = req.user.claims.sub;
+      const currentUserId = req.user.id;
       const otherUserId = req.params.otherUserId;
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
@@ -817,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send message - WITH AUTHORIZATION
   app.post('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
-      const senderId = req.user.claims.sub;
+      const senderId = req.user.id;
       const validatedData = insertMessageSchema.parse(req.body);
 
       // Verify conversation access if conversationId is provided
@@ -864,7 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start a new conversation - WITH AUTHORIZATION
   app.post('/api/messages/start', isAuthenticated, async (req: any, res) => {
     try {
-      const senderId = req.user.claims.sub;
+      const senderId = req.user.id;
       const { receiverId, content, productId } = req.body;
 
       if (!receiverId || !content) {
@@ -907,7 +910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get conversation by product context - WITH AUTHORIZATION
   app.get('/api/messages/product/:productId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const productId = req.params.productId;
 
       // Find conversation related to this product involving the current user
@@ -935,7 +938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get unread message count - USER-SPECIFIC
   app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const count = await storage.getTotalUnreadMessageCount(userId);
       res.json({ unreadCount: count });
     } catch (error) {
@@ -962,7 +965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "imageURL is required" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const objectStorageService = new ObjectStorageService();
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         req.body.imageURL,

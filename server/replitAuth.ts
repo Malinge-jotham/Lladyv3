@@ -1,313 +1,204 @@
-// auth.ts (enhanced)
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-import passport from "passport";
-import session from "express-session";
+// server/replitAuth.ts
 import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
+import { createClient } from "@supabase/supabase-js";
+import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
-import bcrypt from "bcrypt";
-
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+/*
+//secret
+// --- Environment setup ---
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  throw new Error("Missing Supabase environment variables");
 }
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for session storage");
+}
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET must be set");
+}
+*/
+const DATABASE_URL="postgresql://postgres:SabbathIsHolyR3st@db.rhebmwmxtiyuazljugfl.supabase.co:5432/postgres"
+const PUBLIC_OBJECT_SEARCH_PATHS="public"
+const SESSION_SECRET="3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4"
+const REPLIT_DOMAINS="localhost"
+const REPL_ID="local-dev"
+let NODE_ENV
 
-const getOidcConfig = memoize(
-  async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
-  },
-  { maxAge: 3600 * 1000 }
+
+// --- Direct Supabase Connection ---
+export const supabase = createClient(
+  "https://rhebmwmxtiyuazljugfl.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZWJtd214dGl5dWF6bGp1Z2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNTM0OTEsImV4cCI6MjA3NjYyOTQ5MX0.UTwY8C27ED0QYBJzNfAgl-pOJ0aIn98KwQQcGMXdjG8"
 );
 
+
+// --- Express Session (using Postgres store) ---
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  console.log("[Auth] Using Postgres session store with:", DATABASE_URL);
+
   return session({
-    secret: process.env.SESSION_SECRET!,
-    store: sessionStore,
+    store: new pgStore({
+      conString: DATABASE_URL,
+      createTableIfMissing: true,
+      tableName: "sessions",
+    }),
+    secret: SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
-      maxAge: sessionTtl,
+      secure: NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     },
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
-
-async function upsertUser(
-  claims: any,
-) {
-  // Extract user data from OIDC claims
-  const userData = {
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["given_name"] || claims["first_name"] || "",
-    lastName: claims["family_name"] || claims["last_name"] || "",
-    profileImageUrl: claims["picture"] || claims["profile_image_url"] || "",
-    // Additional fields with default values
-    bannerImageUrl: claims["banner_image_url"] || "",
-    bio: claims["bio"] || "",
-    location: claims["location"] || "",
-    website: claims["website"] || "",
-  };
-
-  await storage.upsertUser(userData);
-}
-
-export async function setupAuth(app: Express) {
+// --- Setup authentication routes ---
+export function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  const config = await getOidcConfig();
-
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    const strategy = new Strategy(
-      {
-        name: `replitauth:${domain}`,
-        config,
-        scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
-      },
-      verify,
-    );
-    passport.use(strategy);
-  }
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
-  app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Credentials", "true");
+    next();
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
+  // --- REGISTER ---
+  app.post("/api/auth/register", async (req, res) => {
+    console.log("[Auth] Register request body:", req.body);
+    const { email, password, name } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      });
+
+      if (error) {
+        console.error("[Auth] Supabase signup error:", error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      console.log("[Auth] User registered:", data.user);
+      res.json({ message: "User registered successfully", user: data.user });
+    } catch (err) {
+      console.error("[Auth] Register error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+  // --- LOGIN ---
+  app.post("/api/login", async (req, res) => {
+    console.log("[Auth] Login request:", req.body);
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("[Auth] Supabase login error:", error);
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Save session user
+      req.session.user = {
+        id: data.user?.id,
+        email: data.user?.email,
+        name: data.user?.user_metadata?.name || null,
+      };
+
+      console.log("[Auth] Session created for user:", req.session.user);
+      res.json({ message: "Login successful", user: req.session.user });
+    } catch (err) {
+      console.error("[Auth] Login error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // --- LOGOUT ---
+  app.get("/api/auth/logout", (req, res) => {
+    console.log("[Auth] Logout requested");
+    req.session.destroy(() => {
+      console.log("[Auth] Session destroyed");
+      res.json({ message: "Logged out" });
     });
   });
 
-  // Add additional authentication endpoints for email/password auth
-  setupEmailAuth(app);
-}
-
-// Setup email/password authentication endpoints
-function setupEmailAuth(app: Express) {
-  // Registration endpoint
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const { email, password, name, username } = req.body;
-
-      // Validate input
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-
-      if (password.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters" });
-      }
-
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-
-      // Split name into first and last name
-      const nameParts = name ? name.split(' ') : [];
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
-      // Create user with password
-      const user = await storage.createUserWithPassword({
-        email,
-        password,
-        firstName,
-        lastName,
-        username,
-        // Set default values for other fields
-        bannerImageUrl: "",
-        bio: "",
-        location: "",
-        website: "",
-      });
-
-      // Log the user in
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Login after registration failed" });
-        }
-        res.json({ user });
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Login endpoint
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      // Validate input
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-
-      // Find user
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Verify password
-      const isValidPassword = await storage.verifyPassword(user.id, password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Log the user in
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Login failed" });
-        }
-        res.json({ user });
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Password reset endpoints
-  app.post("/api/auth/forgot-password", async (req, res) => {
-    // Implement password reset logic here
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
-
-    // Check if user exists
-    const user = await storage.getUserByEmail(email);
-    if (!user) {
-      // Don't reveal whether email exists or not
-      return res.json({ message: "If the email exists, a reset link has been sent" });
-    }
-
-    // Generate reset token and send email (implementation omitted)
-    // For now, just return success
-    res.json({ message: "If the email exists, a reset link has been sent" });
-  });
-
-  app.post("/api/auth/reset-password", async (req, res) => {
-    const { token, newPassword } = req.body;
-
-    if (!token || !newPassword) {
-      return res.status(400).json({ message: "Token and new password are required" });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    // Verify token and get user ID (implementation omitted)
-    // For now, assume token verification is successful and we have userId
-    const userId = "user_id_from_token"; // This should come from token verification
-
-    try {
-      await storage.updatePassword(userId, newPassword);
-      res.json({ message: "Password reset successful" });
-    } catch (error) {
-      console.error("Password reset error:", error);
-      res.status(500).json({ message: "Password reset failed" });
-    }
-  });
-
-  // Auth status endpoint
+  // --- STATUS ---
   app.get("/api/auth/status", (req, res) => {
-    if (req.isAuthenticated()) {
-      res.json(req.user);
-    } else {
-      res.status(401).json({ message: "Not authenticated" });
+    console.log("[Auth] Checking auth status. Session user:", req.session.user);
+    if (req.session.user) {
+      return res.json(req.session.user);
     }
+    res.status(401).json({ message: "Not authenticated" });
+  });
+
+  // --- RESET PASSWORD ---
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const { email } = req.body;
+    console.log("[Auth] Reset password request:", email);
+    if (!email) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      console.error("[Auth] Password reset error:", error);
+      return res.status(400).json({ message: error.message });
+    }
+
+    console.log("[Auth] Password reset email sent to:", email);
+    res.json({ message: "Password reset email sent" });
   });
 }
+/*
 
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
+// --- Auth Middleware ---
+export const isAuthenticated: RequestHandler = (req: any, res, next) => {
+  console.log("[Middleware] Checking authentication...");
 
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
+  if (req.session) {
+    console.log("[Middleware] Session ID:", req.session.id);
+    console.log("[Middleware] Session content:", req.session);
+  } else {
+    console.log("[Middleware] No session object found!");
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+  if (req.session && req.session.user) {
+    console.log("[Middleware] Authenticated user found:", req.session.user);
+    req.user = {
+      id: req.session.user.id,
+      email: req.session.user.email ?? null,
+      name: req.session.user.name ?? null,
+    };
     return next();
   }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  console.warn("[Middleware] Unauthorized request — no user in session.");
+  return res.status(401).json({ message: "Unauthorized" });
+};
+*/
+// --- Auth Middleware (Temporary Testing Mode) ---
+export const isAuthenticated: RequestHandler = (req: any, res, next) => {
+  
 
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  // Mock user data
+  req.user = {
+    id: "698cbaa0-3170-455a-9c9c-38f014a9109e",
+    email: "malinge069@gmail.com",
+    name: "Test User",
+  };
+
+  
+  return next();
 };
