@@ -1,3 +1,7 @@
+
+import 'global-agent/bootstrap.js';
+global.GLOBAL_AGENT.HTTP_PROXY = 'http://0.0.0.0';
+process.env.NODE_OPTIONS = "--dns-result-order=ipv4first";
 // 👈 must come FIRST before anything else
 import dotenv from 'dotenv';
 

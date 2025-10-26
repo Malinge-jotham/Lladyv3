@@ -12,12 +12,15 @@ import { Button } from "@/components/ui/button";
 import { FaPlus, FaSearch } from "react-icons/fa";
 
 export default function Messages() {
+  // ✅ Authentication and state hooks (top-level only)
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showStartConversation, setShowStartConversation] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // ✅ Query for conversations (hook at top level, always)
   const {
     data: conversations,
     isLoading,
@@ -27,45 +30,9 @@ export default function Messages() {
     retry: false,
   });
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, authLoading, toast]);
-
-  useEffect(() => {
-    if (error && isUnauthorizedError(error as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [error, toast]);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Skeleton className="h-8 w-32" />
-      </div>
-    );
-  }
-
-  // Deduplicate conversations by userId
+  // ✅ Always define hooks before any return
   const uniqueConversations = useMemo(() => {
-    if (!conversations || !Array.isArray(conversations)) return [];
+    if (!Array.isArray(conversations)) return [];
     const seen = new Set<string>();
     return conversations.filter((conv: any) => {
       if (seen.has(conv.userId)) return false;
@@ -74,17 +41,48 @@ export default function Messages() {
     });
   }, [conversations]);
 
-  // Filter conversations based on search query
   const filteredConversations = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     return uniqueConversations.filter((conversation: any) => {
       const fullName = `${conversation.user?.firstName || ""} ${
         conversation.user?.lastName || ""
       }`.toLowerCase();
       const lastMessage = conversation.lastMessage?.toLowerCase() || "";
-      const query = searchQuery.toLowerCase();
       return fullName.includes(query) || lastMessage.includes(query);
     });
   }, [uniqueConversations, searchQuery]);
+
+  // ✅ Effects come after all hooks
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Redirecting to login...",
+        variant: "destructive",
+      });
+      setTimeout(() => (window.location.href = "/api/login"), 500);
+    }
+  }, [authLoading, isAuthenticated, toast]);
+
+  useEffect(() => {
+    if (error && isUnauthorizedError(error as Error)) {
+      toast({
+        title: "Session expired",
+        description: "Please log in again.",
+        variant: "destructive",
+      });
+      setTimeout(() => (window.location.href = "/api/login"), 500);
+    }
+  }, [error, toast]);
+
+  // ✅ Conditional rendering AFTER hooks — safe
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Skeleton className="h-8 w-32" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -97,7 +95,7 @@ export default function Messages() {
             className="w-80 border-r border-gray-300 bg-gray-50 shadow-lg"
             data-testid="conversations-list"
           >
-            {/* Header with title and new chat button */}
+            {/* Header */}
             <div className="p-6 border-b border-gray-300 bg-white">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Chats</h2>
@@ -124,7 +122,7 @@ export default function Messages() {
               </div>
             </div>
 
-            {/* Conversations List */}
+            {/* Conversations */}
             <div className="overflow-y-auto bg-gray-50">
               {isLoading ? (
                 <div className="space-y-2 p-2">
@@ -176,8 +174,8 @@ export default function Messages() {
                                   </span>
                                 </div>
                               )}
-                              {/* Online status indicator */}
-                              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                              {/* Online Indicator */}
+                              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm" />
                             </div>
 
                             <div className="flex-1 min-w-0">
@@ -200,12 +198,14 @@ export default function Messages() {
 
                                 <div className="flex flex-col items-end space-y-2 ml-3">
                                   <span className="text-xs text-gray-400 font-medium">
-                                    {new Date(
-                                      conversation.lastMessageTime
-                                    ).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
+                                    {conversation.lastMessageTime
+                                      ? new Date(
+                                          conversation.lastMessageTime
+                                        ).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : ""}
                                   </span>
                                   {unreadCount > 0 && (
                                     <div className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-[22px] h-6 flex items-center justify-center shadow-md">

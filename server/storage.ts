@@ -28,6 +28,7 @@ import {
   type Bookmark,
   type InsertBookmark,
 } from "@shared/schema";
+//user
 import { db } from "./db";
 import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
 
@@ -37,7 +38,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateProfile(userId: string, profile: UpdateProfile): Promise<User>;
   getUserProfile(userId: string): Promise<{ user: User; followers: number; following: number } | undefined>;
-
+//conversation
   // Product operations
   createProduct(userId: string, product: InsertProduct): Promise<Product>;
   getProducts(limit?: number, offset?: number): Promise<Product[]>;
@@ -98,6 +99,8 @@ export interface IStorage {
   updateOrderStatus(orderId: string, status: string): Promise<void>;
 
   // Message operations
+  getUserConversations(userId: string): Promise<any[]>;
+
   sendMessage(senderId: string, message: InsertMessage): Promise<Message>;
   getMessages(userId1: string, userId2: string): Promise<Message[]>;
   getConversations(userId: string): Promise<any[]>;
@@ -699,7 +702,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, orderId));
   }
 
+
   // Message operations
+
+  // Add this inside class DatabaseStorage (below getConversations or near message methods)
+async getUserConversations(userId: string): Promise<any[]> {
+  // Get distinct conversations where the user is either sender or receiver
+  const conversations = await db
+    .select({
+      id: messages.conversationId,
+      user1Id: messages.senderId,
+      user2Id: messages.receiverId,
+      lastMessage: sql`MAX(${messages.content})`.as("lastMessage"),
+      lastMessageTime: sql`MAX(${messages.createdAt})`.as("lastMessageTime"),
+    })
+    .from(messages)
+    .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
+    .groupBy(messages.conversationId, messages.senderId, messages.receiverId)
+    .orderBy(desc(sql`MAX(${messages.createdAt})`));
+
+  return conversations;
+}
+
   async sendMessage(senderId: string, message: InsertMessage): Promise<Message> {
     const [newMessage] = await db
       .insert(messages)

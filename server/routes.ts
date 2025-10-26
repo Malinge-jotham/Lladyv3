@@ -728,30 +728,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Message routes - SECURE VERSION WITH PROPER AUTHORIZATION
-  app.get('/api/messages/conversations', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const conversations = await storage.getUserConversations(userId); // Only user's conversations
+ app.get('/api/messages/conversations', isAuthenticated, async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    console.log("✅ Fetching conversations for user:", userId);
 
-      // Get user details for each conversation
-      const conversationsWithUsers = await Promise.all(
-        conversations.map(async (conv) => {
-          // Get the other user in the conversation
-          const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
-          const user = await storage.getUser(otherUserId);
-          const lastMessage = await storage.getLastMessage(conv.id);
-          const unreadCount = await storage.getUnreadMessageCount(userId, conv.id);
-          return { ...conv, user, lastMessage, unreadCount };
-        })
-      );
+    const conversations = await storage.getConversations(userId);
+    console.log("📦 Conversations found:", conversations);
 
-      res.json(conversationsWithUsers);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      res.status(500).json({ message: "Failed to fetch conversations" });
+    // If the result is not an array, log and stop
+    if (!Array.isArray(conversations)) {
+      console.error("❌ getUserConversations did not return an array:", conversations);
+      return res.status(500).json({ message: "Invalid conversation data" });
     }
-  });
+
+    const conversationsWithUsers = await Promise.all(
+      conversations.map(async (conv) => {
+        const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
+        const user = await storage.getUser(otherUserId);
+        const lastMessage = await storage.getLastMessage(conv.id);
+        const unreadCount = await storage.getUnreadMessageCount(userId, conv.id);
+        return { ...conv, user, lastMessage, unreadCount };
+      })
+    );
+
+    res.json(conversationsWithUsers);
+  } catch (error) {
+    console.error("🚨 Error fetching conversations:", error);
+    res.status(500).json({ message: "Failed to fetch conversations", error: error.message });
+  }
+});
 
   // Get messages by conversation ID - WITH AUTHORIZATION
   app.get('/api/messages/conversation/:conversationId', isAuthenticated, async (req: any, res) => {
