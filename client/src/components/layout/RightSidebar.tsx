@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FaSearch, FaChartLine, FaStore, FaComments } from "react-icons/fa";
+import { FaSearch, FaChartLine, FaStore, FaComments, FaBars } from "react-icons/fa";
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 
@@ -171,6 +171,9 @@ export default function RightSidebar() {
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // mobile / tablet panel state
+  const [panelOpen, setPanelOpen] = useState(false);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
@@ -211,147 +214,226 @@ export default function RightSidebar() {
     }
   };
 
-  return (
-    <div className="fixed right-0 top-0 h-screen w-80 bg-white p-4 flex flex-col">
-      <div className="flex-1 overflow-y-auto">
-        {/* Search */}
-        <div className="bg-muted rounded-full p-3 mb-6">
-          <div className="flex items-center space-x-3">
-            <FaSearch className="text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search products and vrooms..."
-              className="bg-transparent outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          </div>
+  // Panel content reused for desktop aside and slide-over
+  const panelContent = (
+    <>
+      {/* Search */}
+      <div className="bg-muted rounded-full p-3 mb-6">
+        <div className="flex items-center space-x-3">
+          <FaSearch className="text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search products and vrooms..."
+            className="bg-transparent outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
         </div>
-
-        {/* Trending Hashtags */}
-        <Card className="mb-6">
-          <div className="p-4 border-b border-border">
-            <h3 className="text-lg font-semibold">Trending Hashtags</h3>
-          </div>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {hashtagsLoading ? (
-                <div className="space-y-4 p-4">
-                  {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-6 w-full rounded" />
-                  ))}
-                </div>
-              ) : trendingHashtags && trendingHashtags.length > 0 ? (
-                trendingHashtags.map((item: any) => (
-                  <Link
-                    key={item.tag}
-                    href={`/hashtags/${encodeURIComponent(item.tag)}`}
-                  >
-                    <div className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{item.tag}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.count} products
-                        </p>
-                      </div>
-                      <FaChartLine className="text-accent" />
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <p className="p-4 text-center text-muted-foreground">
-                  No trending hashtags found.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Popular Vrooms */}
-        <Card className="mb-6">
-          <div className="p-4 border-b border-border">
-            <h3 className="text-lg font-semibold">Popular Vrooms</h3>
-          </div>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {vroomsLoading ? (
-                <div className="space-y-4 p-4">
-                  {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full rounded" />
-                  ))}
-                </div>
-              ) : trendingVrooms && trendingVrooms.length > 0 ? (
-                trendingVrooms.slice(0, 3).map((vroom: any) => {
-                  const isFollowing = followingStates[vroom.id] || false;
-                  return (
-                    <Link key={vroom.id} href={`/vrooms/${vroom.id}`}>
-                      <div className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          {vroom.coverImageUrl ? (
-                            <img
-                              src={vroom.coverImageUrl}
-                              alt={vroom.name}
-                              className="w-10 h-10 rounded-lg object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                              <FaStore className="text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1">
-                            <p className="font-medium">{vroom.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCount(vroom.productsCount || 0)} products •{" "}
-                              {formatCount(vroom.followersCount || 0)} followers
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={isFollowing ? "outline" : "default"}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleFollowToggle(vroom.id);
-                          }}
-                        >
-                          {isFollowing ? "Following" : "Follow"}
-                        </Button>
-                      </div>
-                    </Link>
-                  );
-                })
-              ) : (
-                <p className="p-4 text-center text-muted-foreground">
-                  No popular vrooms found.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Floating Stella Button */}
+      {/* Trending Hashtags */}
+      <Card className="mb-6">
+        <div className="p-4 border-b border-border">
+          <h3 className="text-lg font-semibold">Trending Hashtags</h3>
+        </div>
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
+            {hashtagsLoading ? (
+              <div className="space-y-4 p-4">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-6 w-full rounded" />
+                ))}
+              </div>
+            ) : trendingHashtags && trendingHashtags.length > 0 ? (
+              trendingHashtags.map((item: any) => (
+                <Link
+                  key={item.tag}
+                  href={`/hashtags/${encodeURIComponent(item.tag)}`}
+                >
+                  <div className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex justify-between items-center">
+                    <div>
+                      <p className="font-medium truncate">{item.tag}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.count} products
+                      </p>
+                    </div>
+                    <FaChartLine className="text-accent" />
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p className="p-4 text-center text-muted-foreground">
+                No trending hashtags found.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Popular Vrooms */}
+      <Card className="mb-6">
+        <div className="p-4 border-b border-border">
+          <h3 className="text-lg font-semibold">Popular Vrooms</h3>
+        </div>
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
+            {vroomsLoading ? (
+              <div className="space-y-4 p-4">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded" />
+                ))}
+              </div>
+            ) : trendingVrooms && trendingVrooms.length > 0 ? (
+              trendingVrooms.slice(0, 3).map((vroom: any) => {
+                const isFollowing = followingStates[vroom.id] || false;
+                return (
+                  <Link key={vroom.id} href={`/vrooms/${vroom.id}`}>
+                    <div className="p-4 hover:bg-muted/30 transition-colors cursor-pointer flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {vroom.coverImageUrl ? (
+                          <img
+                            src={vroom.coverImageUrl}
+                            alt={vroom.name}
+                            className="w-10 h-10 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                            <FaStore className="text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{vroom.name}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {formatCount(vroom.productsCount || 0)} products •{" "}
+                            {formatCount(vroom.followersCount || 0)} followers
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={isFollowing ? "outline" : "default"}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleFollowToggle(vroom.id);
+                        }}
+                      >
+                        {isFollowing ? "Following" : "Follow"}
+                      </Button>
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <p className="p-4 text-center text-muted-foreground">
+                No popular vrooms found.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop / large screens: right aside */}
+      <aside
+        className="hidden lg:flex flex-col fixed right-0 top-0 h-screen bg-white p-4 overflow-y-auto border-l border-border"
+        style={{ width: "clamp(220px, 18vw, 360px)" }}
+        aria-label="Right sidebar"
+      >
+        <div className="flex-1">
+          {panelContent}
+        </div>
+
+        {/* Footer */}
+        <div className="py-4 border-t border-border mt-4 text-center text-xs text-muted-foreground">
+          <div className="mb-2">© {new Date().getFullYear()} Ldady. All Rights Reserved.</div>
+          <div className="flex justify-center space-x-4">
+            <Link href="/terms-of-service">
+              <span className="hover:text-foreground cursor-pointer transition-colors">Terms of Service</span>
+            </Link>
+            <Link href="/privacy-policy">
+              <span className="hover:text-foreground cursor-pointer transition-colors">Privacy Policy</span>
+            </Link>
+          </div>
+        </div>
+      </aside>
+
+      {/* Tablet / Mobile: small "Details" button (positioned left of chat button) */}
+      <div className="lg:hidden fixed bottom-6 right-20 z-40">
+        <button
+          onClick={() => setPanelOpen(true)}
+          className="bg-white/95 backdrop-blur border border-slate-200 rounded-full px-3 py-3 shadow-md text-sm flex items-center gap-2"
+          aria-controls="right-panel"
+          aria-expanded={panelOpen}
+          title="Open details"
+        >
+          <FaBars className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Slide-over panel for tablet/mobile */}
+      <div
+        id="right-panel"
+        className={`fixed inset-0 z-50 ${panelOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+        aria-hidden={!panelOpen}
+      >
+        {/* overlay */}
+        <div
+          className={`absolute inset-0 bg-black/40 transition-opacity ${panelOpen ? "opacity-100" : "opacity-0"}`}
+          onClick={() => setPanelOpen(false)}
+        />
+
+        {/* panel */}
+        <div
+          className={`absolute right-0 top-0 bottom-0 bg-white shadow-xl transform transition-transform ${panelOpen ? "translate-x-0" : "translate-x-full"}`}
+          style={{ width: "min(92vw, 360px)" }}
+          role="dialog"
+        >
+          <div className="p-4 h-full overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-lg font-semibold">Details</div>
+              <button onClick={() => setPanelOpen(false)} className="text-gray-600 px-2 py-1">Close</button>
+            </div>
+
+            <div className="flex-1">{panelContent}</div>
+
+            <div className="py-4 border-t border-border mt-4 text-center text-xs text-muted-foreground">
+              <div className="mb-2">© {new Date().getFullYear()} Ldady. All Rights Reserved.</div>
+              <div className="flex justify-center space-x-4">
+                <Link href="/terms-of-service">
+                  <span className="hover:text-foreground cursor-pointer transition-colors">Terms of Service</span>
+                </Link>
+                <Link href="/privacy-policy">
+                  <span className="hover:text-foreground cursor-pointer transition-colors">Privacy Policy</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Stella Button (keeps original behavior, responsive sizing) */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed bottom-6 right-6 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary/90 transition"
+        className="fixed bottom-6 right-6 bg-primary text-white p-3 sm:p-4 rounded-full shadow-lg hover:bg-primary/90 transition z-50"
+        aria-label="Open chat"
       >
-        <FaComments size={20} />
+        <FaComments size={18} className="sm:!w-5 sm:!h-5" />
       </button>
 
-      {/* Stella Chat Window */}
+      {/* Stella Chat Window (responsive sizes) */}
       {isChatOpen && (
-        <div className="fixed bottom-20 right-6 w-80 h-96 bg-white border border-gray-300 shadow-lg rounded-xl flex flex-col z-50">
-          <div className="bg-primary text-white p-3 rounded-t-xl font-semibold">
-            Stella 💬 — Eldady Assistant
-          </div>
+        <div
+          className="fixed bottom-20 right-6 bg-white border border-gray-300 shadow-lg rounded-xl flex flex-col z-50"
+          style={{ width: "min(92vw, 360px)", height: "min(72vh, 520px)" }}
+        >
+          <div className="bg-primary text-white p-3 rounded-t-xl font-semibold">Stella 💬 — Eldady Assistant</div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`p-2 rounded-lg max-w-[80%] ${
-                  msg.sender === "user"
-                    ? "bg-primary text-white ml-auto"
-                    : "bg-gray-100 text-gray-800 mr-auto"
-                }`}
+                className={`p-2 rounded-lg max-w-[80%] ${msg.sender === "user" ? "bg-primary text-white ml-auto" : "bg-gray-100 text-gray-800 mr-auto"}`}
               >
                 {msg.text}
               </div>
@@ -363,36 +445,18 @@ export default function RightSidebar() {
             )}
             <div ref={chatEndRef} />
           </div>
-          <div className="p-3 border-t flex space-x-2">
+          <div className="p-3 border-t flex gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               placeholder="Type your message..."
+              className="flex-1"
             />
             <Button onClick={sendMessage}>Send</Button>
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <div className="py-4 border-t border-border mt-auto text-center text-xs text-muted-foreground">
-        <div className="mb-2">
-          © {new Date().getFullYear()} Eldady. All Rights Reserved.
-        </div>
-        <div className="flex justify-center space-x-4">
-          <Link href="/terms-of-service">
-            <span className="hover:text-foreground cursor-pointer transition-colors">
-              Terms of Service
-            </span>
-          </Link>
-          <Link href="/privacy-policy">
-            <span className="hover:text-foreground cursor-pointer transition-colors">
-              Privacy Policy
-            </span>
-          </Link>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

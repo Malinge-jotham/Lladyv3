@@ -10,23 +10,17 @@ import dns from "dns";
 dns.setDefaultResultOrder("ipv4first"); // 👈 force IPv4 lookup globall
 
 // --- Supabase Client (HTTPS) ---
-export const supabase = createClient(
-  "https://rhebmwmxtiyuazljugfl.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." // replace with your actual anon/service key
-);
-/*
-// --- Database Connection (Force IPv4) ---
-const sql = postgres(
-  "postgresql://postgres:SabbathIsHolyR3st@db.rhebmwmxtiyuazljugfl.supabase.co:5432/postgres",
-  {
-    ssl: "require",
-    hostname: "db.rhebmwmxtiyuazljugfl.supabase.co",
-    port: 5432,
-    connection: {
-      family: 4, // 👈 Force IPv4 to bypass IPv6 unreachable error
-    },
-  }
-); */
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZWJtd214dGl5dWF6bGp1Z2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNTM0OTEsImV4cCI6MjA3NjYyOTQ5MX0.UTwY8C27ED0QYBJzNfAgl-pOJ0aIn98KwQQcGMXdjG8";
+
+const DATABASE_URL =
+  "https://rhebmwmxtiyuazljugfl.supabase.co";
+
+// =======================
+// 🔐 SUPABASE CLIENT
+// =======================
+export const supabase = createClient(DATABASE_URL, SUPABASE_ANON_KEY);
+
 const sql = postgres(
   "postgresql://postgres.rhebmwmxtiyuazljugfl:SabbathIsHolyR3st@aws-1-us-east-1.pooler.supabase.com:5432/postgres",
   

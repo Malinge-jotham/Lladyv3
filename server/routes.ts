@@ -174,6 +174,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       const products = await storage.getProducts(limit, offset);
+      console.log(products)
+    
 
       // Get stats for each product
       const productsWithStats = await Promise.all(
@@ -271,9 +273,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/products', isAuthenticated, async (req: any, res) => {
+    
     try {
       const userId = req.user.id;
       const validatedData = insertProductSchema.parse(req.body);
+      console.log(validatedData)
 
       const product = await storage.createProduct(userId, validatedData);
       res.status(201).json(product);
@@ -744,17 +748,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const conversationsWithUsers = await Promise.all(
       conversations.map(async (conv) => {
-        const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
-        const user = await storage.getUser(otherUserId);
-        const lastMessage = await storage.getLastMessage(conv.id);
-        const unreadCount = await storage.getUnreadMessageCount(userId, conv.id);
-        return { ...conv, user, lastMessage, unreadCount };
+        // Case A: full conversation object with ids
+        if (conv.id && (conv.user1Id || conv.user2Id)) {
+          const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
+          const user = otherUserId ? await storage.getUser(otherUserId) : null;
+          const lastMessage = await storage.getLastMessage(conv.id);
+          const unreadCount = await storage.getUnreadMessageCount(userId, conv.id);
+          return { ...conv, user, lastMessage, unreadCount };
+        }
+
+        // Case B: summary row (from an aggregate query) — already has userId/lastMessage fields
+        const otherUserId = conv.userId ?? null;
+        const user = otherUserId ? await storage.getUser(otherUserId) : null;
+        const lastMessage = conv.lastMessage ?? null;
+        const lastMessageTime = conv.lastMessageTime ?? null;
+        // If we have an id use unread count otherwise default to 0
+        const unreadCount = conv.id ? await storage.getUnreadMessageCount(userId, conv.id) : (conv.isRead ? 0 : 1);
+        return {
+          id: conv.id ?? null,
+          ...conv,
+          user,
+          lastMessage,
+          lastMessageTime,
+          unreadCount,
+        };
       })
     );
 
     res.json(conversationsWithUsers);
   } catch (error) {
-    console.error("🚨 Error fetching conversations:", error);
+    console.log("🚨 Error fetching conversations:", error);
     res.status(500).json({ message: "Failed to fetch conversations", error: error.message });
   }
 });
@@ -764,6 +787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const conversationId = req.params.conversationId;
+      console.log(conversationId)
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 

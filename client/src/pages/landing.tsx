@@ -30,25 +30,46 @@ export default function Landing() {
   const [signupPassword, setSignupPassword] = useState("");
 
   const handleLogin = async () => {
-    if (!loginEmail || !loginPassword) {
-      alert("Please enter both email and password");
-      return;
-    }
+  if (!loginEmail || !loginPassword) {
+    alert("Please enter both email and password");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
+  setLoading(true);
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+
+    if (error) throw error;
+
+    if (data?.session) {
+      const token = data.session.access_token;
+
+      // ✅ Store token locally so you can send it in backend API requests
+      localStorage.setItem("token", token);
+
+      alert("Login successful!");
+
+      // Example: call your backend immediately to verify
+      const res = await fetch("http://localhost:5000/api/products/user", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
-      if (error) throw error;
-      // Login successful - app will redirect based on your auth flow
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
+
+      const result = await res.json();
+      console.log("User data from backend:", result);
     }
-  };
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleSignup = async () => {
     if (!firstName || !secondName || !signupEmail || !signupPassword) {

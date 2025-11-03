@@ -746,19 +746,36 @@ async getUserConversations(userId: string): Promise<any[]> {
   }
 
   async getConversations(userId: string): Promise<any[]> {
-    // Get all users who have sent or received messages with this user
-    const conversations = await db
-      .selectDistinct({
-        userId: sql<string>`CASE WHEN ${messages.senderId} = ${userId} THEN ${messages.receiverId} ELSE ${messages.senderId} END`,
-        lastMessage: messages.content,
-        lastMessageTime: messages.createdAt,
-        isRead: messages.isRead,
-      })
+    if (!userId) return [];
+
+    // Fetch all messages involving the user, newest first
+    const rows = await db
+      .select()
       .from(messages)
       .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
       .orderBy(desc(messages.createdAt));
 
-    return conversations;
+    // Build a map of the latest message per other user (avoid SQL CASE injection)
+    const conversationsMap = new Map<string, any>();
+
+    for (const row of rows) {
+      const sender = (row as any).senderId;
+      const receiver = (row as any).receiverId;
+      const otherId = sender === userId ? receiver : sender;
+      if (!otherId) continue;
+
+      if (!conversationsMap.has(otherId)) {
+        conversationsMap.set(otherId, {
+          id: null, // no conversation id in this summary
+          userId: otherId,
+          lastMessage: (row as any).content,
+          lastMessageTime: (row as any).createdAt,
+          isRead: (row as any).isRead,
+        });
+      }
+    }
+
+    return Array.from(conversationsMap.values());
   }
 
   async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
