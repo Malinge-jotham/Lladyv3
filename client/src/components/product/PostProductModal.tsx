@@ -37,8 +37,8 @@ export default function PostProductModal({ isOpen, onClose }: PostProductModalPr
   });
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/products", formData);
+    mutationFn: async (payload: any) => {
+      return apiRequest("POST", "/api/products", payload);
     },
     onSuccess: async () => {
       toast({ title: "Success", description: "Product posted successfully" });
@@ -65,7 +65,16 @@ export default function PostProductModal({ isOpen, onClose }: PostProductModalPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate();
+    const payload = {
+      name: formData.name.trim(),
+      description: formData.description.trim(),
+      price: formData.price ? Number(formData.price) : 0,
+      currency: formData.currency,
+      // API/schema expects imageUrls array — map single imageUrl to that
+      imageUrls: formData.imageUrl ? [formData.imageUrl.trim()] : [],
+    };
+
+    mutation.mutate(payload);
   };
 
   return (

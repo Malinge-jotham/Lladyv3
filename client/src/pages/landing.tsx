@@ -53,7 +53,7 @@ export default function Landing() {
       alert("Login successful!");
 
       // Example: call your backend immediately to verify
-      const res = await fetch("https://lladynew.onrender.com/api/products/user", {
+      const res = await fetch("http://localhost:5000/api/products/user", {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,

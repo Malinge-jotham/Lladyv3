@@ -32,6 +32,30 @@ import {
 import { db } from "./db";
 import { eq, desc, sql, and, or, like, ilike, not, inArray } from "drizzle-orm";
 
+/**
+ * Small sanitizer: converts undefined -> null, leaves other values alone.
+ * Use before sending values into queries or returning rows to route layer.
+ */
+function sanitizeParam<T>(v: T): T | null {
+  if (v === undefined) return null;
+  if (v === null) return null;
+  // preserve Date instances
+  if (v instanceof Date) return v;
+  if (Array.isArray(v)) return v.map(sanitizeParam) as any;
+  if (typeof v === "object" && v !== null) {
+    // only sanitize plain objects (not Date, Buffer, etc.)
+    const out: any = {};
+    for (const [k, val] of Object.entries(v as any)) out[k] = sanitizeParam(val);
+    return out as any;
+  }
+  return v;
+}
+
+/** Ensure id-like args are present. Returns falsey -> caller should early-return. */
+function hasId(v: any): v is string {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -105,24 +129,14 @@ export interface IStorage {
   getMessages(userId1: string, userId2: string): Promise<Message[]>;
   getConversations(userId: string): Promise<any[]>;
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
-
-  // Follow operations
-  followUser(followerId: string, followingId: string): Promise<void>;
-  unfollowUser(followerId: string, followingId: string): Promise<void>;
-  isUserFollowing(followerId: string, followingId: string): Promise<boolean>;
-  getFollowers(userId: string): Promise<User[]>;
-  getFollowing(userId: string): Promise<User[]>;
-  getFollowersCount(userId: string): Promise<number>;
-  getFollowingCount(userId: string): Promise<number>;
-
-  // Search operations
-  searchUsers(query: string, excludeUserId: string): Promise<User[]>;
-  searchVrooms(query: string): Promise<Vroom[]>;
+  // returns number of unread messages for a given conversation where the user is the receiver
+  getUnreadMessageCount(userId: string, conversationId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
+    if (!hasId(id)) return undefined; // guard
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -705,72 +719,104 @@ export class DatabaseStorage implements IStorage {
 
   // Message operations
 
-  // Add this inside class DatabaseStorage (below getConversations or near message methods)
-async getUserConversations(userId: string): Promise<any[]> {
-  // Get distinct conversations where the user is either sender or receiver
-  const conversations = await db
-    .select({
-      id: messages.conversationId,
-      user1Id: messages.senderId,
-      user2Id: messages.receiverId,
-      lastMessage: sql`MAX(${messages.content})`.as("lastMessage"),
-      lastMessageTime: sql`MAX(${messages.createdAt})`.as("lastMessageTime"),
-    })
-    .from(messages)
-    .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
-    .groupBy(messages.conversationId, messages.senderId, messages.receiverId)
-    .orderBy(desc(sql`MAX(${messages.createdAt})`));
+  // Add this helper: getConversation by conversationId (safe guard)
+  async getConversation(conversationId: string): Promise<any | undefined> {
+    if (!hasId(conversationId)) return undefined;
+    const [row] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .limit(1);
 
-  return conversations;
-}
+    if (!row) return undefined;
+
+    return {
+      id: conversationId,
+      user1Id: row.senderId ?? null,
+      user2Id: row.receiverId ?? null,
+    };
+  }
+
+  async getMessagesByConversation(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
+    if (!hasId(conversationId)) return [];
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async markConversationMessagesAsRead(userId: string, conversationId: string): Promise<void> {
+    if (!hasId(userId) || !hasId(conversationId)) return;
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(and(eq(messages.receiverId, userId), eq(messages.conversationId, conversationId)));
+  }
+
+  // keep existing getUserConversations if present
+  async getUserConversations(userId: string): Promise<any[]> {
+    if (!hasId(userId)) return [];
+    // existing query (keeps behavior)
+    const conversations = await db
+      .select({
+        id: messages.conversationId,
+        user1Id: messages.senderId,
+        user2Id: messages.receiverId,
+        lastMessage: sql`MAX(${messages.content})`.as("lastMessage"),
+        lastMessageTime: sql`MAX(${messages.createdAt})`.as("lastMessageTime"),
+      })
+      .from(messages)
+      .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
+      .groupBy(messages.conversationId, messages.senderId, messages.receiverId)
+      .orderBy(desc(sql`MAX(${messages.createdAt})`));
+
+    return conversations.map((c: any) => ({
+      ...c,
+      id: sanitizeParam(c.id) ?? null,
+      user1Id: sanitizeParam(c.user1Id) ?? null,
+      user2Id: sanitizeParam(c.user2Id) ?? null,
+      lastMessage: sanitizeParam(c.lastMessage) ?? null,
+      lastMessageTime: sanitizeParam(c.lastMessageTime) ?? null,
+    }));
+  }
 
   async sendMessage(senderId: string, message: InsertMessage): Promise<Message> {
+    if (!hasId(senderId) || !message) throw new Error("invalid sendMessage args");
+    const safeMessage = sanitizeParam(message) as any;
     const [newMessage] = await db
       .insert(messages)
-      .values({ ...message, senderId })
+      .values({ ...safeMessage, senderId })
       .returning();
     return newMessage;
   }
 
-  async getMessages(userId1: string, userId2: string): Promise<Message[]> {
-    return await db
-      .select()
-      .from(messages)
-      .where(
-        or(
-          and(eq(messages.senderId, userId1), eq(messages.receiverId, userId2)),
-          and(eq(messages.senderId, userId2), eq(messages.receiverId, userId1))
-        )
-      )
-      .orderBy(messages.createdAt);
-  }
-
   async getConversations(userId: string): Promise<any[]> {
-    if (!userId) return [];
+    if (!hasId(userId)) return [];
 
-    // Fetch all messages involving the user, newest first
     const rows = await db
       .select()
       .from(messages)
       .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
       .orderBy(desc(messages.createdAt));
 
-    // Build a map of the latest message per other user (avoid SQL CASE injection)
     const conversationsMap = new Map<string, any>();
 
     for (const row of rows) {
       const sender = (row as any).senderId;
       const receiver = (row as any).receiverId;
       const otherId = sender === userId ? receiver : sender;
-      if (!otherId) continue;
+      if (!hasId(otherId)) continue;
 
       if (!conversationsMap.has(otherId)) {
         conversationsMap.set(otherId, {
-          id: null, // no conversation id in this summary
-          userId: otherId,
-          lastMessage: (row as any).content,
-          lastMessageTime: (row as any).createdAt,
-          isRead: (row as any).isRead,
+          id: sanitizeParam((row as any).conversationId) ?? null,
+          userId: sanitizeParam(otherId) ?? null,
+          lastMessage: sanitizeParam((row as any).content) ?? null,
+          lastMessageTime: sanitizeParam((row as any).createdAt) ?? null,
+          isRead: sanitizeParam((row as any).isRead) ?? false,
         });
       }
     }
@@ -778,50 +824,24 @@ async getUserConversations(userId: string): Promise<any[]> {
     return Array.from(conversationsMap.values());
   }
 
+  // keep markMessagesAsRead for compatibility (existing)
   async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
+    if (!hasId(userId) || !hasId(senderId)) return;
     await db
       .update(messages)
       .set({ isRead: true })
       .where(and(eq(messages.receiverId, userId), eq(messages.senderId, senderId)));
   }
 
-  // Search operations
-  async searchUsers(query: string, excludeUserId: string): Promise<User[]> {
-    const searchTerm = `%${query.toLowerCase()}%`;
-
-    return await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          not(eq(users.id, excludeUserId)),
-          or(
-            ilike(users.firstName, searchTerm),
-            ilike(users.lastName, searchTerm),
-            ilike(users.email, searchTerm),
-            ilike(users.username, searchTerm)
-          )
-        )
-      )
-      .limit(10);
+  // returns number of unread messages for a given conversation where the user is the receiver
+  async getUnreadMessageCount(userId: string, conversationId: string): Promise<number> {
+    if (!hasId(userId) || !hasId(conversationId)) return 0;
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(and(eq(messages.conversationId, conversationId), eq(messages.receiverId, userId), eq(messages.isRead, false)));
+    return Number(result?.count ?? 0);
   }
+ }
 
-  async searchVrooms(query: string): Promise<Vroom[]> {
-    return await db
-      .select()
-      .from(vrooms)
-      .where(
-        and(
-          eq(vrooms.isPublic, true),
-          or(
-            like(vrooms.name, `%${query}%`),
-            like(vrooms.description, `%${query}%`)
-          )
-        )
-      )
-      .orderBy(desc(vrooms.createdAt))
-      .limit(20);
-  }
-}
-
-export const storage = new DatabaseStorage();
+ export const storage = new DatabaseStorage();

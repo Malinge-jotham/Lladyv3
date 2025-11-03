@@ -276,6 +276,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const userId = req.user.id;
+      // Support legacy `imageUrl` (single string) from clients
+      if (req.body.imageUrl && !Array.isArray(req.body.imageUrls)) {
+        req.body.imageUrls = [req.body.imageUrl];
+      }
       const validatedData = insertProductSchema.parse(req.body);
       console.log(validatedData)
 
@@ -376,22 +380,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/hashtags/trending', async (req, res) => {
     try {
       const products = await storage.getTrendingProducts(); // Reuse your trending products logic
+      if (!Array.isArray(products)) {
+        return res.json([]);
+      }
+
       const hashtagCount: Record<string, number> = {};
 
-      products.forEach((product) => {
-        if (product.hashtags && Array.isArray(product.hashtags)) {
-          product.hashtags.forEach((tag: string) => {
-            const lowerTag = tag.toLowerCase();
-            hashtagCount[lowerTag] = (hashtagCount[lowerTag] || 0) + 1;
-          });
-        }
-      });
+      for (const product of products) {
+        let tags: string[] = [];
 
-      // Convert to array and sort by count
+        // normalize different possible shapes:
+        if (Array.isArray(product.hashtags)) {
+          tags = product.hashtags.filter(Boolean).map((t: any) => String(t));
+        } else if (typeof product.hashtags === 'string') {
+          // split comma/space-separated strings
+          tags = product.hashtags
+            .split(/[,\s]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+        } else if (product.hashtags == null) {
+          tags = [];
+        } else {
+          // if stored as something unexpected, try to coerce
+          try {
+            tags = Array.isArray(product.hashtags) ? product.hashtags : [String(product.hashtags)];
+          } catch {
+            tags = [];
+          }
+        }
+
+        for (let tag of tags) {
+          if (!tag) continue;
+          tag = tag.startsWith('#') ? tag.toLowerCase() : '#' + tag.toLowerCase();
+          hashtagCount[tag] = (hashtagCount[tag] || 0) + 1;
+        }
+      }
+
       const trendingHashtags = Object.entries(hashtagCount)
         .map(([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10); // top 10 hashtags
+        .slice(0, 20);
 
       res.json(trendingHashtags);
     } catch (error) {
@@ -1044,115 +1072,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket server for real-time messaging - WITH AUTHORIZATION
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-  // Track connected clients by userId
-  const clients = new Map<string, WebSocket>();
+  // Track connected clients by userId -> allow multiple sockets per user
+  const clients = new Map<string, Set<WebSocket>>();
+  const MAX_SOCKETS_PER_USER = 10; // optional limit per user to avoid resource exhaustion
 
-  wss.on("connection", (ws, req) => {
-    // In a real implementation, you should verify JWT token here
-    const params = new URLSearchParams(req.url?.split("?")[1]);
-    const userId = params.get("userId");
-
-    if (!userId) {
-      ws.close(1008, "Authentication required");
-      return;
+  function addClientSocket(userId: string, socket: WebSocket) {
+    let set = clients.get(userId);
+    if (!set) {
+      set = new Set<WebSocket>();
+      clients.set(userId, set);
     }
-
-    // Store the connection
-    clients.set(userId, ws);
-    console.log(`User ${userId} connected via WebSocket`);
-
-    ws.on("message", async (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        const { receiverId, content, conversationId, productId } = message;
-
-        if (!receiverId || !content) {
-          ws.send(JSON.stringify({ type: "error", message: "Receiver ID and content are required" }));
-          return;
-        }
-
-        // Users cannot message themselves
-        if (userId === receiverId) {
-          ws.send(JSON.stringify({ type: "error", message: "Cannot message yourself" }));
-          return;
-        }
-
-        let conversation;
-
-        // Use existing conversationId or find/create one
-        if (conversationId) {
-          // Verify conversation access
-          conversation = await storage.getConversation(conversationId);
-          if (!conversation) {
-            ws.send(JSON.stringify({ type: "error", message: "Conversation not found" }));
-            return;
-          }
-
-          // CRITICAL: Verify user is a participant in this conversation
-          if (conversation.user1Id !== userId && conversation.user2Id !== userId) {
-            ws.send(JSON.stringify({ type: "error", message: "Access denied to conversation" }));
-            return;
-          }
-
-          // Verify receiver is the other participant
-          const expectedReceiverId = conversation.user1Id === userId ? conversation.user2Id : conversation.user1Id;
-          if (receiverId !== expectedReceiverId) {
-            ws.send(JSON.stringify({ type: "error", message: "Receiver ID does not match conversation" }));
-            return;
-          }
-        } else {
-          // Find or create conversation
-          conversation = await storage.findConversation(userId, receiverId);
-          if (!conversation) {
-            conversation = await storage.createConversation(userId, receiverId);
-          }
-
-          // Link to product if provided
-          if (productId) {
-            await storage.linkConversationToProduct(conversation.id, productId);
-          }
-        }
-
-        // Save message in DB
-        const savedMessage = await storage.sendMessage(userId, {
-          receiverId,
-          conversationId: conversation.id,
-          content: content.trim(),
-          productId: productId || undefined
-        });
-
-        // Deliver to receiver if online
-        const receiverSocket = clients.get(receiverId);
-        if (receiverSocket && receiverSocket.readyState === receiverSocket.OPEN) {
-          receiverSocket.send(JSON.stringify({ 
-            type: "message", 
-            data: savedMessage,
-            conversation: conversation
-          }));
-        }
-
-        // Echo back to sender
-        ws.send(JSON.stringify({ 
-          type: "message", 
-          data: savedMessage,
-          conversation: conversation
-        }));
-      } catch (error) {
-        console.error("WebSocket message error:", error);
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+    // enforce a small limit: close oldest if exceeded
+    if (set.size >= MAX_SOCKETS_PER_USER) {
+      const oldest = set.values().next().value as WebSocket | undefined;
+      if (oldest && oldest.readyState === WebSocket.OPEN) {
+        try { oldest.close(1000, "replaced-by-new-connection"); } catch (_) {}
       }
-    });
+      set.delete(oldest);
+    }
+    set.add(socket);
+  }
 
-    ws.on("close", () => {
-      clients.delete(userId);
-      console.log(`User ${userId} disconnected`);
-    });
+  function removeClientSocket(userId: string, socket: WebSocket) {
+    const set = clients.get(userId);
+    if (!set) return;
+    set.delete(socket);
+    if (set.size === 0) clients.delete(userId);
+  }
 
-    ws.on("error", (error) => {
-      console.error(`WebSocket error for user ${userId}:`, error);
-      clients.delete(userId);
-    });
-  });
+  function getClientSockets(userId: string): Set<WebSocket> {
+    return clients.get(userId) ?? new Set();
+  }
+
+   // heartbeat to keep connections healthy and cleanup dead sockets
+   const heartbeatInterval = setInterval(() => {
+     wss.clients.forEach((s) => {
+       const sock = s as WebSocket & { isAlive?: boolean; userId?: string };
+       if (sock.isAlive === false) {
+         console.log('Terminating dead socket for user', sock.userId);
+         return sock.terminate();
+       }
+       sock.isAlive = false;
+       try { sock.ping(); } catch (_) {}
+     });
+   }, 30000);
+ 
+   wss.on("connection", (ws, req) => {
+     try {
+       const host = req.headers.host ?? "localhost";
+       const url = new URL(req.url ?? "", `http://${host}`);
+       const userId = url.searchParams.get("userId");
+ 
+       if (!userId) {
+         ws.close(1008, "Authentication required");
+         return;
+       }
+ 
+       (ws as any).userId = userId;
+       (ws as any).isAlive = true;
+       addClientSocket(userId, ws);
+       console.log(`User ${userId} connected via WebSocket`);
+ 
+       ws.on("pong", () => {
+         (ws as any).isAlive = true;
+       });
+ 
+       ws.on("message", async (data) => {
+         try {
+           const message = JSON.parse(data.toString());
+           const { receiverId, content, conversationId, productId } = message;
+ 
+           if (!receiverId || !content) {
+             ws.send(JSON.stringify({ type: "error", message: "Receiver ID and content are required" }));
+             return;
+           }
+ 
+           // Users cannot message themselves
+           if (userId === receiverId) {
+             ws.send(JSON.stringify({ type: "error", message: "Cannot message yourself" }));
+             return;
+           }
+ 
+           let conversation;
+ 
+           // Use existing conversationId or find/create one
+           if (conversationId) {
+             // Verify conversation access
+             conversation = await storage.getConversation(conversationId);
+             if (!conversation) {
+               ws.send(JSON.stringify({ type: "error", message: "Conversation not found" }));
+               return;
+             }
+ 
+             // CRITICAL: Verify user is a participant in this conversation
+             if (conversation.user1Id !== userId && conversation.user2Id !== userId) {
+               ws.send(JSON.stringify({ type: "error", message: "Access denied to conversation" }));
+               return;
+             }
+ 
+             // Verify receiver is the other participant
+             const expectedReceiverId = conversation.user1Id === userId ? conversation.user2Id : conversation.user1Id;
+             if (receiverId !== expectedReceiverId) {
+               ws.send(JSON.stringify({ type: "error", message: "Receiver ID does not match conversation" }));
+               return;
+             }
+           } else {
+             // Find or create conversation
+             conversation = await storage.findConversation(userId, receiverId);
+             if (!conversation) {
+               conversation = await storage.createConversation(userId, receiverId);
+             }
+ 
+             // Link to product if provided
+             if (productId) {
+               await storage.linkConversationToProduct(conversation.id, productId);
+             }
+           }
+ 
+           // Save message in DB
+           const savedMessage = await storage.sendMessage(userId, {
+             receiverId,
+             conversationId: conversation.id,
+             content: content.trim(),
+             productId: productId || undefined
+           });
+ 
+          // Deliver to all receiver sockets if online
+          for (const sock of getClientSockets(receiverId)) {
+            if (sock.readyState === WebSocket.OPEN) {
+              try {
+                sock.send(JSON.stringify({
+                  type: "message",
+                  data: savedMessage,
+                  conversation,
+                }));
+              } catch (e) { /* ignore per-socket send failures */ }
+            }
+          }
+ 
+          // Echo back to all sockets of the sender (so every device sees sent message)
+          for (const sock of getClientSockets(userId)) {
+            if (sock.readyState === WebSocket.OPEN) {
+              try {
+                sock.send(JSON.stringify({
+                  type: "message",
+                  data: savedMessage,
+                  conversation,
+                }));
+              } catch (e) {}
+            }
+          }
+         } catch (error) {
+           console.error("WebSocket message error:", error);
+           ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+         }
+       });
+ 
+       ws.on("close", (code, reason) => {
+        removeClientSocket(userId, ws);
+        console.log(`User ${userId} disconnected, code=${code}, reason=${reason?.toString() ?? ""} (remaining sockets: ${getClientSockets(userId).size})`);
+       });
+ 
+       ws.on("error", (error) => {
+         console.error(`WebSocket error for user ${userId}:`, error);
+       });
+     } catch (err) {
+       console.error("WS connection setup error:", err);
+       try { ws.close(1011, "server error"); } catch (_) {}
+     }
+   });
+ 
+   // cleanup heartbeat when server stops
+   httpServer.on("close", () => clearInterval(heartbeatInterval));
 
   return httpServer;
 }
