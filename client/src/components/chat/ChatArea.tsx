@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { FaPaperPlane, FaSmile, FaPaperclip, FaArrowLeft, FaPhone, FaVideo } from "react-icons/fa";
+import { toWsUrl, API_BASE } from "@/lib/api";
 
 interface ChatAreaProps {
   userId: string;
@@ -14,13 +15,13 @@ interface ChatAreaProps {
 
 export default function ChatArea({ userId }: ChatAreaProps) {
   const [messageText, setMessageText] = useState("");
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const wsRef = useRef<WebSocket | null>(null);
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["/api/messages", userId],
@@ -43,8 +44,9 @@ export default function ChatArea({ userId }: ChatAreaProps) {
       setMessageText("");
 
       // Send via WebSocket for real-time updates
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
           type: "message",
           message: newMessage,
         }));
@@ -59,56 +61,40 @@ export default function ChatArea({ userId }: ChatAreaProps) {
     },
   });
 
-// WebSocket connection
-useEffect(() => {
-  if (!userId) return;
+  // WebSocket connection
+  useEffect(() => {
+    const currentUserId = (currentUser as any)?.id;
+    if (!currentUserId) return;
 
-  // Detect correct protocol
-  const isSecure = window.location.protocol === "https:";
-  const protocol = isSecure ? "wss:" : "ws:";
+    const wsUrl = `${toWsUrl("/ws")}?userId=${encodeURIComponent(currentUserId)}`;
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
-  // Use backend port (5000) instead of frontend (5173)
-  const backendHost =
-    import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, "") || "https://lladynew.onrender.com";
+    ws.onopen = () => console.log("✅ WebSocket connected:", wsUrl);
 
-  const wsUrl = `${protocol}//${backendHost}/ws?userId=${userId}`;
-  const ws = new WebSocket(wsUrl);
-
-  ws.onopen = () => {
-    console.log("✅ WebSocket connected:", wsUrl);
-    setSocket(ws);
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      if (data.type === "message") {
-        // Only refresh if the message is relevant to current conversation
-        if (data.message.senderId === userId || data.message.receiverId === userId) {
-          queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "message") {
+          // only refresh messages when relevant to the open conversation
+          const otherId = userId; // conversation partner
+          if (data.data?.senderId === otherId || data.data?.receiverId === otherId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
+          }
+          queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
         }
-        // Always refresh conversations list for new message notifications
-        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
-      }
-    } catch (error) {
-      console.error("Error parsing WebSocket message:", error);
-    }
-  };
+      } catch (err) { console.error("Error parsing WS message:", err); }
+    };
 
-  ws.onclose = () => {
-    console.log("❌ WebSocket disconnected");
-    setSocket(null);
-  };
+    ws.onclose = (ev) => {
+      console.log("❌ WebSocket disconnected", ev.code, ev.reason);
+      wsRef.current = null;
+    };
 
-  ws.onerror = (error) => {
-    console.error("⚠️ WebSocket error:", error);
-  };
+    ws.onerror = (err) => console.error("⚠️ WebSocket error:", err);
 
-  return () => {
-    ws.close();
-  };
-}, [userId, queryClient]);
-
+    return () => { try { ws.close(); } catch (_) {} };
+  }, [userId, queryClient, currentUser]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -126,8 +112,9 @@ useEffect(() => {
     if (!isTyping) {
       setIsTyping(true);
       // Send typing indicator to other user via WebSocket
-      if (socket) {
-        socket.send(JSON.stringify({
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
           type: "typing",
           userId: (currentUser as any)?.id,
           targetUserId: userId,
@@ -142,8 +129,9 @@ useEffect(() => {
 
     const timeout = setTimeout(() => {
       setIsTyping(false);
-      if (socket) {
-        socket.send(JSON.stringify({
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
           type: "typing",
           userId: (currentUser as any)?.id,
           targetUserId: userId,

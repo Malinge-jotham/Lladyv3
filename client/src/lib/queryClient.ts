@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { createClient } from "@supabase/supabase-js";
+import { API_BASE, apiRequestBase } from "./api"; // new import
 
 
 // ✅ Initialize Supabase client
@@ -32,11 +33,8 @@ export async function apiRequest(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const res = await fetch(`https://lladynew.onrender.com${url}`, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+  const res = await apiRequestBase(method, url, data, {
+    headers: { Authorization: token ? `Bearer ${token}` : "" },
   });
 
   await throwIfResNotOk(res);
@@ -57,7 +55,7 @@ export const getQueryFn: <T>(options: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`https://lladynew.onrender.com${queryKey.join("/")}`, {
+    const res = await fetch(`${API_BASE}${queryKey.join("/")}`, {
       credentials: "include",
       headers,
     });
