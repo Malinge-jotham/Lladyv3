@@ -19,7 +19,7 @@ export function setupAuth(app: Express) {
         "http://localhost:5173", // your dev frontend
         "https://eldadymart.vercel.app", // your deployed frontend
         "https://lladynew.onrender.com/",
-        "http://localhost:5000/"
+        "http://https://lladynew.onrender.com/"
       ],
       credentials: true,
     })

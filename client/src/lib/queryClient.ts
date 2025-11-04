@@ -32,7 +32,7 @@ export async function apiRequest(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const res = await fetch(`http://localhost:5000${url}`, {
+  const res = await fetch(`http://https://lladynew.onrender.com${url}`, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -57,7 +57,7 @@ export const getQueryFn: <T>(options: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`http://localhost:5000${queryKey.join("/")}`, {
+    const res = await fetch(`http://https://lladynew.onrender.com${queryKey.join("/")}`, {
       credentials: "include",
       headers,
     });

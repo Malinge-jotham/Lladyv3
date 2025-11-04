@@ -69,7 +69,7 @@ useEffect(() => {
 
   // Use backend port (5000) instead of frontend (5173)
   const backendHost =
-    import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, "") || "localhost:5000";
+    import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, "") || "https://lladynew.onrender.com";
 
   const wsUrl = `${protocol}//${backendHost}/ws?userId=${userId}`;
   const ws = new WebSocket(wsUrl);
