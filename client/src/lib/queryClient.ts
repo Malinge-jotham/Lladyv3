@@ -32,7 +32,7 @@ export async function apiRequest(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const res = await fetch(`https://lladynew.onrender.com${url}`, {
+  const res = await fetch(`http://localhost:5000${url}`, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -53,13 +53,14 @@ export const getQueryFn: <T>(options: {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
 
-    const headers: Record<string, string> = {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-
-    const res = await fetch(`https://lladynew.onrender.com${queryKey.join("/")}`, {
+    
+    
+    const res = await fetch(`http://localhost:5000${queryKey.join("/")}`, {
       credentials: "include",
-      headers,
+       headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

@@ -1,0 +1,88 @@
+[33m5d27ab9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m cors update
+[33mf9867e1[m update onreder server
+[33me984472[m cors update
+[33m5874526[m cors update
+[33m55f5b21[m cors update
+[33mfbec3e0[m cors update
+[33mcfa3f25[m cors update
+[33m4b0b8f0[m second commit
+[33m978831f[m second commit
+[33m9acefd4[m first commit
+[33mb4d4b38[m first commit
+[33mf897a64[m Improve scrolling behavior and header visibility on the explore page
+[33m2b14067[m Add endpoint to check if a product is liked or bookmarked by a user
+[33m5dd22a9[m Saved your changes before starting work
+[33ma99d42c[m Update navigation to use new routing library
+[33ma2b50de[m Enhance order notifications and user profile management
+[33me21fe47[m Improve header behavior by hiding it when scrolling down
+[33mfcb064a[m Update checkout process to create individual orders and notifications per product
+[33mfc30079[m Update product image field and add ability to delete Vrooms
+[33mc108d37[m Add ability for users to bookmark products they are interested in
+[33m7f7442e[m Add bookmarking functionality to products and user profiles
+[33m6d29205[m Add dynamic routing and integrate new pages for exploring vrooms and hashtags
+[33m4217521[m Enhance trending and popular product displays with accurate follower and product counts
+[33m7c1de71[m Integrate Replit authentication for user login and navigation
+[33m72c7ad0[m Restored to 'd9607bedf8e270251c8aacf05f34314bf05bc0a2'
+[33mb5ef3b1[m Saved your changes before rolling back
+[33m6290168[m Saved your changes before starting work
+[33ma615d23[m Integrate user authentication and refine landing page display
+[33m8b018ae[m Update authentication flow to properly handle login and logout states
+[33m05e3a3b[m Update landing page component to ensure proper export
+[33m2d24080[m Improve scrolling behavior for the header on the explore page
+[33mcbe9d45[m Update project structure and internal import paths
+[33m4217a41[m Improve user navigation and vroom experience
+[33md9607be[m Improve chat, explore, and trending features with UI and logic enhancements
+[33mf39543d[m Enhance the chat interface with emoji support and real-time messaging
+[33mcd638d8[m Add password-based authentication and improve messaging features
+[33mce1948d[m Improve chat functionality and add email/password authentication
+[33m16e375e[m Add currency symbols and improve authentication flow
+[33me6af402[m Improve product card layout and fix scroll behavior
+[33m0d0104f[m Enhance the product display and explore page features
+[33mf6d2e16[m Improve chat and messaging features with new functionalities
+[33m6288031[m Improve profile page with new social links and data handling
+[33m4480d28[m Improve product sharing and user messaging features
+[33m80ab2d0[m Fix issue with fetching comments and their replies for product pages
+[33m96ff881[m Add a dedicated storage space for uploaded images in the database
+[33mdb711d3[m Add functionality to store and retrieve uploaded images securely
+[33m3318003[m Add image storage and retrieval capabilities to the platform
+[33mba3eccc[m Add a database table to store uploaded product images
+[33m5d2eef3[m Add validation to prevent users from sending messages to themselves
+[33m827796b[m Enable users to view and manage their own private conversations
+[33m84db919[m Resolve issues preventing the application from starting
+[33m44db106[m Saved your changes before starting work
+[33ma434894[m Add foundational setup for user authentication and authorization flows
+[33m8c190b0[m Add ability for users to view and interact with product comments
+[33m9960d2c[m Add threaded comments and replies to products for community interaction
+[33m92c9b42[m Add functionality for users to comment on products
+[33m38fd272[m Add ability to comment on products with nested replies
+[33m9cefe87[m Add commenting functionality to products, mimicking Twitter threads
+[33mbc06193[m Update Vroom page to select and add products from user's inventory
+[33m3073e28[m Update checkout total amount to string and enhance user search functionality
+[33mc33e201[m Fix error when placing an order by handling amount types
+[33mee1a745[m Add unique constraint to cart items for products
+[33m2bb019a[m Refine chat interface to match design with improved styling
+[33mf1b120e[m Add real-time chat features including search and typing indicators
+[33m771115c[m Restored to 'a5223e9c7229914df4cbe58f8bed3fda5a9771a7'
+[33mf5520c7[m Saved your changes before rolling back
+[33ma0a6240[m Modernize chat interface with updated styling and user experience
+[33ma5223e9[m Update development environment to include login integration
+[33m4d675e6[m Restored to 'ef8cb94b6d891e0dd2e0f694427980790f24830c'
+[33mfe864af[m Saved your changes before rolling back
+[33m0c10d97[m Update project configurations to enable new features
+[33m414d35c[m Restored to '8d4c5808a3efeca14c60e605987acdafa3b60f25'
+[33m6119ca0[m Saved your changes before rolling back
+[33m8d4c580[m Update the messaging interface to match the new UI design
+[33m510442b[m Enhance messaging with real-time updates and read receipts
+[33mef8cb94[m Enhance messaging functionality and integrate direct seller communication
+[33mbfb2a86[m Add functionality for users to create and manage their "Vrooms"
+[33m8b9a5b8[m Add Vroom creation, management, and product association features
+[33md61a45b[m Add fully functional explore page with search and filtering capabilities
+[33md75b7e1[m Fix error that prevents users from posting new products
+[33m1eb0cf6[m Fix error that prevents users from successfully posting products
+[33m52b100a[m Allow product prices to be entered as strings or numbers
+[33m96ceb61[m Align product and vroom sections on user profile page
+[33mdda384e[m Allow users to update their profile and banner images
+[33mcc2495f[m Update profile settings to allow photo and banner uploads
+[33m15b2ea3[m Add user profile viewing and editing functionality
+[33maa9f2a8[m Set up project configuration and base UI components for the platform
+[33me1477e9[m Initial commit

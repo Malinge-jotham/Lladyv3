@@ -132,7 +132,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
 
-    console.log("[Middleware] ✅ Authenticated user:", data.user.email);
+    
     req.user = data.user;
     next();
   } catch (err) {
