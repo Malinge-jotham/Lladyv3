@@ -1,6 +1,5 @@
-
 import 'global-agent/bootstrap.js';
-global.GLOBAL_AGENT.HTTP_PROXY = 'http://0.0.0.0';
+//global.GLOBAL_AGENT.HTTP_PROXY = 'http://0.0.0.0';
 process.env.NODE_OPTIONS = "--dns-result-order=ipv4first";
 // 👈 must come FIRST before anything else
 import dotenv from 'dotenv';
@@ -42,6 +41,14 @@ app.use((req, res, next) => {
     }
   });
 
+  next();
+});
+
+app.use("/api", (req, res, next) => {
+  // Prevent proxies/browsers from returning 304 for API responses
+  res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
+  // If you vary by Authorization (recommended), tell caches not to serve same response to different auths
+  res.setHeader("Vary", "Authorization");
   next();
 });
 

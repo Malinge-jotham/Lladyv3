@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import eldadyLogo from "@/assets/ELDADY-LOGO.png";
 
@@ -6,11 +5,10 @@ import eldadyLogo from "@/assets/ELDADY-LOGO.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-//import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/queryClient";
 import { FaArrowRight } from "react-icons/fa";
-// --- Initialize Supabase client ---
-export const supabase = createClient("https://rhebmwmxtiyuazljugfl.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZWJtd214dGl5dWF6bGp1Z2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNTM0OTEsImV4cCI6MjA3NjYyOTQ5MX0.UTwY8C27ED0QYBJzNfAgl-pOJ0aIn98KwQQcGMXdjG8")
-//profiles
+//User data from backend:
+ //profiles
 export default function Landing() {
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,6 +44,7 @@ export default function Landing() {
 
     if (data?.session) {
       const token = data.session.access_token;
+      console.log("Login successful, token:", token);
 
       // ✅ Store token locally so you can send it in backend API requests
       localStorage.setItem("token", token);
@@ -61,7 +60,7 @@ export default function Landing() {
       });
 
       const result = await res.json();
-      console.log("User data from backend:", result);
+      
     }
   } catch (err) {
     alert(err.message);

@@ -12,15 +12,15 @@ import { Button } from "@/components/ui/button";
 import { FaPlus, FaSearch } from "react-icons/fa";
 
 export default function Messages() {
-  // ✅ Authentication and state hooks (top-level only)
+  // ✅ Authentication and state hooks
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [showStartConversation, setShowStartConversation] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ✅ Query for conversations (hook at top level, always)
+  // ✅ Query for conversations
   const {
     data: conversations,
     isLoading,
@@ -30,17 +30,18 @@ export default function Messages() {
     retry: false,
   });
 
-  // ✅ Always define hooks before any return
+  // ✅ Remove duplicates
   const uniqueConversations = useMemo(() => {
     if (!Array.isArray(conversations)) return [];
     const seen = new Set<string>();
     return conversations.filter((conv: any) => {
-      if (seen.has(conv.userId)) return false;
-      seen.add(conv.userId);
+      if (seen.has(conv.id)) return false;
+      seen.add(conv.id);
       return true;
     });
   }, [conversations]);
 
+  // ✅ Search filter
   const filteredConversations = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return uniqueConversations.filter((conversation: any) => {
@@ -52,7 +53,7 @@ export default function Messages() {
     });
   }, [uniqueConversations, searchQuery]);
 
-  // ✅ Effects come after all hooks
+  // ✅ Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -64,6 +65,7 @@ export default function Messages() {
     }
   }, [authLoading, isAuthenticated, toast]);
 
+  // ✅ Handle session expiry
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
       toast({
@@ -75,7 +77,6 @@ export default function Messages() {
     }
   }, [error, toast]);
 
-  // ✅ Conditional rendering AFTER hooks — safe
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -91,10 +92,7 @@ export default function Messages() {
       <div className="flex-1 ml-64">
         <div className="flex h-screen">
           {/* Conversations List */}
-          <div
-            className="w-80 border-r border-gray-300 bg-gray-50 shadow-lg"
-            data-testid="conversations-list"
-          >
+          <div className="w-80 border-r border-gray-300 bg-gray-50 shadow-lg">
             {/* Header */}
             <div className="p-6 border-b border-gray-300 bg-white">
               <div className="flex items-center justify-between mb-4">
@@ -103,7 +101,6 @@ export default function Messages() {
                   size="sm"
                   onClick={() => setShowStartConversation(true)}
                   className="bg-red-500 hover:bg-red-600 text-white rounded-full w-10 h-10 p-0 shadow-md"
-                  data-testid="button-start-conversation"
                 >
                   <FaPlus className="w-5 h-5" />
                 </Button>
@@ -117,7 +114,6 @@ export default function Messages() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-12 py-3 border-gray-300 rounded-xl bg-gray-100 focus:bg-white focus:border-gray-400 shadow-sm"
-                  data-testid="input-search-conversations"
                 />
               </div>
             </div>
@@ -150,14 +146,13 @@ export default function Messages() {
 
                       return (
                         <div
-                          key={`${conversation.userId}-${index}`}
+                          key={`${conversation.id}-${index}`}
                           className={`p-4 hover:bg-gray-100 transition-all duration-200 cursor-pointer rounded-xl mx-1 shadow-sm ${
-                            selectedUserId === conversation.userId
+                            selectedConversation?.id === conversation.id
                               ? "bg-blue-100 border-l-4 border-l-blue-500"
                               : "bg-white border-l-4 border-l-transparent"
                           }`}
-                          onClick={() => setSelectedUserId(conversation.userId)}
-                          data-testid={`conversation-${conversation.userId}`}
+                          onClick={() => setSelectedConversation(conversation)}
                         >
                           <div className="flex items-center space-x-4">
                             <div className="relative">
@@ -174,28 +169,20 @@ export default function Messages() {
                                   </span>
                                 </div>
                               )}
-                              {/* Online Indicator */}
                               <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm" />
                             </div>
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
-                                  <p
-                                    className="font-bold text-gray-900 truncate text-base"
-                                    data-testid={`conversation-name-${conversation.userId}`}
-                                  >
+                                  <p className="font-bold text-gray-900 truncate text-base">
                                     {conversation.user?.firstName}{" "}
                                     {conversation.user?.lastName}
                                   </p>
-                                  <p
-                                    className="text-sm text-gray-500 truncate mt-1"
-                                    data-testid={`conversation-preview-${conversation.userId}`}
-                                  >
+                                  <p className="text-sm text-gray-500 truncate mt-1">
                                     {conversation.lastMessage}
                                   </p>
                                 </div>
-
                                 <div className="flex flex-col items-end space-y-2 ml-3">
                                   <span className="text-xs text-gray-400 font-medium">
                                     {conversation.lastMessageTime
@@ -222,17 +209,11 @@ export default function Messages() {
                   )}
                 </div>
               ) : searchQuery ? (
-                <div
-                  className="p-8 text-center text-gray-500"
-                  data-testid="no-search-results"
-                >
+                <div className="p-8 text-center text-gray-500">
                   <p>No conversations match "{searchQuery}"</p>
                 </div>
               ) : (
-                <div
-                  className="p-8 text-center text-gray-500"
-                  data-testid="empty-conversations"
-                >
+                <div className="p-8 text-center text-gray-500">
                   <p>No conversations yet.</p>
                   <p className="text-sm mt-1">
                     Start chatting with product sellers!
@@ -242,14 +223,14 @@ export default function Messages() {
             </div>
           </div>
 
-          {/* Chat Area */}
-          {selectedUserId ? (
-            <ChatArea userId={selectedUserId} />
+          {/* ✅ Chat Area */}
+          {selectedConversation ? (
+            <ChatArea
+              conversationId={selectedConversation.id}
+              user={selectedConversation.user}
+            />
           ) : (
-            <div
-              className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-gray-50"
-              data-testid="no-chat-selected"
-            >
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-gray-50">
               <div className="text-center">
                 <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 mx-auto shadow-lg">
                   <FaPlus className="w-10 h-10 text-gray-400" />
@@ -270,8 +251,8 @@ export default function Messages() {
       <StartConversationModal
         isOpen={showStartConversation}
         onClose={() => setShowStartConversation(false)}
-        onConversationStarted={(userId) => {
-          setSelectedUserId(userId);
+        onConversationStarted={(conversation) => {
+          setSelectedConversation(conversation);
         }}
       />
     </div>
