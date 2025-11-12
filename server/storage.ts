@@ -131,6 +131,9 @@ export interface IStorage {
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
   // returns number of unread messages for a given conversation where the user is the receiver
   getUnreadMessageCount(userId: string, conversationId: string): Promise<number>;
+    // Search operations
+  searchUsers(query: string, excludeUserId: string): Promise<User[]>;
+  searchVrooms(query: string): Promise<Vroom[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -530,6 +533,27 @@ export class DatabaseStorage implements IStorage {
       .set({ vroomId: null })
       .where(and(eq(products.id, productId), eq(products.vroomId, vroomId)));
   }
+  // Search operations
+  async searchUsers(query: string, excludeUserId: string): Promise<User[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+
+    return await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          not(eq(users.id, excludeUserId)),
+          or(
+            ilike(users.firstName, searchTerm),
+            ilike(users.lastName, searchTerm),
+            ilike(users.email, searchTerm),
+            ilike(users.username, searchTerm)
+          )
+        )
+      )
+      .limit(10);
+  }
+
 
   async getVroomsByProduct(productId: string): Promise<Vroom[]> {
     const product = await this.getProduct(productId);

@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import logo from "@/assets/ELDADY-LOGO.png";
+import { logoutClient } from "@/lib/auth";
 
 const navigationItems = [
   { path: "/", icon: FaHome, label: "Home", testId: "nav-home" },
@@ -131,7 +132,7 @@ export default function Sidebar() {
           <span className="truncate">Post Product</span>
         </Button>
 
-        <Button onClick={handleLogout} variant="outline" className="w-full" data-testid="button-logout">
+        <Button onClick={() => logoutClient()} variant="outline" className="w-full" data-testid="button-logout">
           Logout
         </Button>
       </div>

@@ -763,10 +763,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
  app.get('/api/messages/conversations', isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user.id;
-    console.log("✅ Fetching conversations for user:", userId);
+    console.log("✅ Fetching conversations for user in the messages:", userId);
 
     const conversations = await storage.getConversations(userId);
-    console.log("📦 Conversations found:", conversations);
 
     // If the result is not an array, log and stop
     if (!Array.isArray(conversations)) {
@@ -780,6 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (conv.id && (conv.user1Id || conv.user2Id)) {
           const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
           const user = otherUserId ? await storage.getUser(otherUserId) : null;
+          console.log("Other user ID:", otherUserId, "User data:", user);
           const lastMessage = await storage.getLastMessage(conv.id);
           const unreadCount = await storage.getUnreadMessageCount(userId, conv.id);
           return { ...conv, user, lastMessage, unreadCount };
@@ -804,6 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     );
 
     res.json(conversationsWithUsers);
+   
   } catch (error) {
     console.log("🚨 Error fetching conversations:", error);
     res.status(500).json({ message: "Failed to fetch conversations", error: error.message });
@@ -815,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const conversationId = req.params.conversationId;
-      console.log(conversationId)
+      
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 
@@ -833,7 +834,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Mark messages as read for this conversation
       await storage.markConversationMessagesAsRead(userId, conversationId);
-
       res.json(messages);
     } catch (error) {
       console.error("Error fetching conversation messages:", error);
@@ -880,6 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const senderId = req.user.id;
       const validatedData = insertMessageSchema.parse(req.body);
+      console.log("Validated message data:", validatedData);
 
       // Verify conversation access if conversationId is provided
       if (validatedData.conversationId) {
@@ -914,7 +915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const message = await storage.sendMessage(senderId, validatedData);
       res.status(201).json(message);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending message:", error.message);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }

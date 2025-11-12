@@ -128,7 +128,7 @@ const getStellaResponse = (message: string): string => {
   if (lowerMsg.includes("fashion seasons")) return "Fashion seasons: " + stellaKB.fashion_trivia.fashion_seasons.join(", ");
   if (lowerMsg.includes("sustainable")) return stellaKB.fashion_trivia.sustainable_fashion;
   if (lowerMsg.includes("fun fact")) return stellaKB.fashion_trivia.fun_facts[Math.floor(Math.random() * stellaKB.fashion_trivia.fun_facts.length)];
-
+//check
   // Advice
   if (lowerMsg.includes("interview")) return stellaKB.fashion_advice.interview;
   if (lowerMsg.includes("jeans")) return "Ways to style jeans:\n" + stellaKB.fashion_advice.styling_jeans.join("\n");

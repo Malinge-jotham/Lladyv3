@@ -33,8 +33,11 @@ export async function apiRequest(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const res = await apiRequestBase(method, url, data, {
-    headers: { Authorization: token ? `Bearer ${token}` : "" },
+  const res = await fetch(`https://lladynew.onrender.com${url}`, {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -55,9 +58,12 @@ export const getQueryFn: <T>(options: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`${API_BASE}${queryKey.join("/")}`, {
+    const res = await fetch(`https://lladynew.onrender.com${queryKey.join("/")}`, {
       credentials: "include",
-      headers,
+       headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
