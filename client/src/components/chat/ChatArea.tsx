@@ -6,11 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { FaPaperPlane, FaSmile, FaPaperclip, FaArrowLeft, FaPhone, FaVideo } from "react-icons/fa";
+import {
+  FaPaperPlane,
+  FaSmile,
+  FaPaperclip,
+  FaArrowLeft,
+  FaPhone,
+  FaVideo,
+} from "react-icons/fa";
 
 interface ChatAreaProps {
   conversationId: string;
-  user?: {
+  user: {
     id: string;
     firstName: string;
     lastName: string;
@@ -20,13 +27,13 @@ interface ChatAreaProps {
 
 export default function ChatArea({ conversationId, user }: ChatAreaProps) {
   const [messageText, setMessageText] = useState("");
+  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const wsRef = useRef<WebSocket | null>(null);
 
   // ✅ Fetch messages by conversationId
   const { data: messages, isLoading } = useQuery({
@@ -49,12 +56,14 @@ export default function ChatArea({ conversationId, user }: ChatAreaProps) {
       });
       setMessageText("");
 
-      // Send via WebSocket for real-time updates
+      // Send via WebSocket
       if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type: "message",
-          message: newMessage,
-        }));
+        socket.send(
+          JSON.stringify({
+            type: "message",
+            message: newMessage,
+          })
+        );
       }
     },
     onError: () => {
@@ -66,58 +75,58 @@ export default function ChatArea({ conversationId, user }: ChatAreaProps) {
     },
   });
 
-// WebSocket connection
-useEffect(() => {
-  if (!userId) return;
+  // ✅ WebSocket setup
+  useEffect(() => {
+    if (!conversationId) return;
 
-  // Detect correct protocol
-  const isSecure = window.location.protocol === "https:";
-  const protocol = isSecure ? "wss:" : "ws:";
+    const isSecure = window.location.protocol === "https:";
+    const protocol = isSecure ? "wss" : "ws";
+    let backendHost = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    backendHost = backendHost.replace(/\/$/, "").replace(/^https?:\/\//, "");
 
-  // Use backend port (5000) instead of frontend (5173)
-  const backendHost =
-    import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, "") || "https://lladynew.onrender.com";
+    const wsUrl = `${protocol}://${backendHost}/ws?conversationId=${conversationId}`;
+    const ws = new WebSocket(wsUrl);
 
-  const wsUrl = `${protocol}//${backendHost}/ws?userId=${userId}`;
-  const ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected:", wsUrl);
+      setSocket(ws);
+    };
 
-  ws.onopen = () => {
-    console.log("✅ WebSocket connected:", wsUrl);
-    setSocket(ws);
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      if (data.type === "message") {
-        // Only refresh if the message is relevant to current conversation
-        if (data.message.senderId === userId || data.message.receiverId === userId) {
-          queryClient.invalidateQueries({ queryKey: ["/api/messages", userId] });
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "message") {
+          // Refresh current conversation messages
+          if (data.message.conversationId === conversationId) {
+            queryClient.invalidateQueries({
+              queryKey: ["/api/messages/conversation", conversationId],
+            });
+          }
+          // Always refresh conversations list
+          queryClient.invalidateQueries({
+            queryKey: ["/api/messages/conversations"],
+          });
         }
-        // Always refresh conversations list for new message notifications
-        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
       }
-    } catch (error) {
-      console.error("Error parsing WebSocket message:", error);
-    }
-  };
+    };
 
-  ws.onclose = () => {
-    console.log("❌ WebSocket disconnected");
-    setSocket(null);
-  };
+    ws.onclose = () => {
+      console.log("❌ WebSocket disconnected");
+      setSocket(null);
+    };
 
-  ws.onerror = (error) => {
-    console.error("⚠️ WebSocket error:", error);
-  };
+    ws.onerror = (error) => {
+      console.error("⚠️ WebSocket error:", error);
+    };
 
-  return () => {
-    ws.close();
-  };
-}, [userId, queryClient]);
+    return () => {
+      ws.close();
+    };
+  }, [conversationId, queryClient]);
 
-
-  // Auto-scroll to bottom when new messages arrive
+  // ✅ Auto-scroll to bottom
   useEffect(() => {
     if (messages && Array.isArray(messages) && messages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -128,14 +137,15 @@ useEffect(() => {
   const handleTyping = () => {
     if (!isTyping) {
       setIsTyping(true);
-      // Send typing indicator to other user via WebSocket
       if (socket) {
-        socket.send(JSON.stringify({
-          type: "typing",
-          userId: (currentUser as any)?.id,
-          targetUserId: userId,
-          isTyping: true
-        }));
+        socket.send(
+          JSON.stringify({
+            type: "typing",
+            userId: (currentUser as any)?.id,
+            conversationId,
+            isTyping: true,
+          })
+        );
       }
     }
 
@@ -144,12 +154,14 @@ useEffect(() => {
     const timeout = setTimeout(() => {
       setIsTyping(false);
       if (socket) {
-        socket.send(JSON.stringify({
-          type: "typing",
-          userId: (currentUser as any)?.id,
-          targetUserId: userId,
-          isTyping: false
-        }));
+        socket.send(
+          JSON.stringify({
+            type: "typing",
+            userId: (currentUser as any)?.id,
+            conversationId,
+            isTyping: false,
+          })
+        );
       }
     }, 1000);
 
