@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from "react"; 
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,12 +26,16 @@ import { logoutClient } from "@/lib/auth";
 const navigationItems = [
   { path: "/", icon: FaHome, label: "Home", testId: "nav-home" },
   { path: "/explore", icon: FaCompass, label: "Explore", testId: "nav-explore" },
-  { path: "/vroom", icon: FaStore, label: "My Vroom", testId: "nav-vroom" }, // special handling
+  { path: "/vroom", icon: FaStore, label: "My Vroom", testId: "nav-vroom" },
   { path: "/messages", icon: FaComments, label: "Messages", testId: "nav-messages" },
   { path: "/profile", icon: FaUser, label: "Profile", testId: "nav-profile" },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isImpact?: boolean; // ✅ new optional prop
+}
+
+export default function Sidebar({ isImpact }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const [showCart, setShowCart] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
@@ -54,9 +58,9 @@ export default function Sidebar() {
 
   const handleMyVroomClick = () => {
     if (userVrooms && userVrooms.length > 0) {
-      setLocation(`/vroom/${userVrooms[0].id}`); // redirect to first vroom
+      setLocation(`/vroom/${userVrooms[0].id}`);
     } else {
-      setLocation("/vroom"); // fallback to general vroom page
+      setLocation("/vroom");
     }
   };
 
