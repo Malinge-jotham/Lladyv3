@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import Sidebar from "@/components/layout/Sidebar";
+import Sidebar from "@/components/layouts/Sidebar";
 import ProductCard from "@/components/product/ProductCard";
 import SelectProductForVroomModal from "@/components/vroom/SelectProductForVroomModal";
 import { Card, CardContent } from "@/components/ui/card";

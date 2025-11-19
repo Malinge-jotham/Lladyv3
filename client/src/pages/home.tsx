@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import Sidebar from "@/components/layout/Sidebar";
-import RightSidebar from "@/components/layout/RightSidebar";
+import Sidebar from "@/components/layouts/Sidebar";
+import RightSidebar from "@/components/layouts/RightSidebar";
 import ProductPost from "@/components/product/ProductPost";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

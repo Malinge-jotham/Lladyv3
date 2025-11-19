@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import Sidebar from "@/components/layout/Sidebar";
+import Sidebar from "@/components/layouts/Sidebar";
 import ChatArea from "@/components/chat/ChatArea";
 import StartConversationModal from "@/components/messages/StartConversationModal";
 import { Input } from "@/components/ui/input";

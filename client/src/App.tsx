@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
-import Layout from "@/components/layout/layout";
+import Layout from "@/components/layouts/layout";
 import Home from "@/pages/home";
 import Explore from "@/pages/explore";
 import Vroom from "@/pages/vroom"; // existing

@@ -1,6 +1,6 @@
 import React from 'react';
-import Sidebar from '@/components/layout/Sidebar'; // Adjust import path as needed
-import RightSidebar from '@/components/layout/RightSidebar'; // Adjust import path as needed
+import Sidebar from '@/components/layouts/Sidebar'; // Adjust import path as needed
+import RightSidebar from '@/components/layouts/RightSidebar'; // Adjust import path as needed
 
 const PrivacyPolicy: React.FC = () => {
   const handleContact = () => {

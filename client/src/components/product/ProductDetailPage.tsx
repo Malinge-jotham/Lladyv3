@@ -12,8 +12,8 @@ import ProductCommentsModal from "@/components/product/ProductCommentsModal";
 import AddProductToVroomModal from "@/components/vroom/AddProductToVroomModal";
 
 // ✅ Layout
-import Sidebar from "@/components/layout/Sidebar";
-import RightSidebar from "@/components/layout/RightSidebar";
+import Sidebar from "@/components/layouts/Sidebar";
+import RightSidebar from "@/components/layouts/RightSidebar";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
