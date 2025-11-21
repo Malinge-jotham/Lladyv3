@@ -4,11 +4,11 @@ import RightSidebar from "./RightSidebar";
 import { Outlet } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
-/**
+/***
  * Responsive style Layout
  * -----------------------------------
  * - Left Sidebar: vertical (desktop) | hidden (mobile)
- * - Bottom Nav Bar: horizontal (mobile)
+ * - Bottom Nav Bar: horizontal (mobile) - handled by Sidebar component
  * - Right Sidebar: visible on large screens
  * - Main: dynamic page area
  */
@@ -53,7 +53,8 @@ const Layout: React.FC = () => {
       {/* ===== MAIN CONTENT (PAGES) ===== */}
       <main
         className="flex-1 min-h-screen max-w-full sm:max-w-[600px]
-                   border-r border-border mx-auto px-1 sm:px-3 md:px-4 overflow-y-auto"
+                   border-r border-border mx-auto px-1 sm:px-3 md:px-4 overflow-y-auto
+                   pb-16 md:pb-0" // Add padding bottom for mobile bottom nav
       >
         <Outlet />
       </main>
@@ -67,13 +68,8 @@ const Layout: React.FC = () => {
       </aside>
 
       {/* ===== MOBILE BOTTOM NAVBAR ===== */}
-      <nav
-        className="fixed bottom-0 left-0 w-full z-40 bg-background border-t border-border
-                   flex items-center justify-around py-2 px-1 sm:hidden"
-      >
-        {/* We can reuse Sidebar icons here — ideally Sidebar exports them as a list of nav items */}
-        <Sidebar isCompact />
-      </nav>
+      {/* This is now handled by the Sidebar component itself */}
+      {/* The Sidebar component includes its own mobile bottom navigation */}
     </div>
   );
 };
