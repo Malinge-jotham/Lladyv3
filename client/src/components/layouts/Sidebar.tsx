@@ -32,7 +32,7 @@ const navigationItems = [
 ];
 
 interface SidebarProps {
-  isImpact?: boolean; // ✅ new optional prop
+  isImpact?: boolean;
 }
 
 export default function Sidebar({ isImpact }: SidebarProps) {
@@ -41,9 +41,6 @@ export default function Sidebar({ isImpact }: SidebarProps) {
   const [showPostModal, setShowPostModal] = useState(false);
   const { cartItemCount } = useCart();
   const { user } = useAuth();
-
-  // mobile drawer
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // fetch user vrooms
   const { data: userVrooms } = useQuery({
@@ -64,8 +61,16 @@ export default function Sidebar({ isImpact }: SidebarProps) {
     }
   };
 
-  // sidebar content reused for desktop and mobile drawer
-  const SidebarInner = (
+  const handleNavigationClick = (path: string) => {
+    if (path === "/vroom") {
+      handleMyVroomClick();
+    } else {
+      setLocation(path);
+    }
+  };
+
+  // Desktop sidebar content
+  const DesktopSidebar = (
     <div className="flex flex-col min-h-full space-y-6">
       {/* Logo */}
       <div className="flex items-center">
@@ -79,34 +84,18 @@ export default function Sidebar({ isImpact }: SidebarProps) {
           const isActive =
             location === item.path || (item.path === "/vroom" && location.startsWith("/vroom"));
 
-          if (item.path === "/vroom") {
-            return (
-              <div
-                key={item.path}
-                onClick={handleMyVroomClick}
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
-                  isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                }`}
-                data-testid={item.testId}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium truncate">{item.label}</span>
-              </div>
-            );
-          }
-
           return (
-            <Link key={item.path} href={item.path}>
-              <div
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                  isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                }`}
-                data-testid={item.testId}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium truncate">{item.label}</span>
-              </div>
-            </Link>
+            <div
+              key={item.path}
+              onClick={() => handleNavigationClick(item.path)}
+              className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+              }`}
+              data-testid={item.testId}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium truncate">{item.label}</span>
+            </div>
           );
         })}
       </nav>
@@ -149,6 +138,66 @@ export default function Sidebar({ isImpact }: SidebarProps) {
     </div>
   );
 
+  // Mobile bottom navigation
+  const MobileBottomNav = (
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
+      <div className="flex items-center justify-around p-2">
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            location === item.path || (item.path === "/vroom" && location.startsWith("/vroom"));
+
+          return (
+            <button
+              key={item.path}
+              onClick={() => handleNavigationClick(item.path)}
+              className={`flex flex-col items-center p-2 rounded-lg transition-colors min-w-0 flex-1 mx-1 ${
+                isActive ? "text-primary" : "text-muted-foreground"
+              }`}
+              data-testid={`mobile-${item.testId}`}
+            >
+              <Icon className="w-5 h-5 mb-1" />
+              <span className="text-xs truncate max-w-full">{item.label}</span>
+            </button>
+          );
+        })}
+        
+        {/* Cart Button in Mobile Nav */}
+        <button
+          onClick={() => setShowCart(true)}
+          className={`flex flex-col items-center p-2 rounded-lg transition-colors min-w-0 flex-1 mx-1 ${
+            showCart ? "text-primary" : "text-muted-foreground"
+          }`}
+          data-testid="mobile-button-cart"
+        >
+          <div className="relative">
+            <FaShoppingCart className="w-5 h-5 mb-1" />
+            {cartItemCount > 0 && (
+              <Badge 
+                variant="secondary" 
+                className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs min-w-4 h-4 flex items-center justify-center p-0"
+                data-testid="mobile-cart-item-count"
+              >
+                {cartItemCount}
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs truncate max-w-full">Cart</span>
+        </button>
+
+        {/* Post Product Button in Mobile Nav */}
+        <button
+          onClick={() => setShowPostModal(true)}
+          className="flex flex-col items-center p-2 rounded-lg transition-colors min-w-0 flex-1 mx-1 text-muted-foreground"
+          data-testid="mobile-button-post-product"
+        >
+          <FaPlus className="w-5 h-5 mb-1" />
+          <span className="text-xs truncate max-w-full">Post</span>
+        </button>
+      </div>
+    </nav>
+  );
+
   return (
     <>
       {/* Desktop / Tablet sidebar (md+) */}
@@ -157,52 +206,13 @@ export default function Sidebar({ isImpact }: SidebarProps) {
         style={{ width: "clamp(200px, 16vw, 280px)" }}
         data-testid="sidebar"
       >
-        {SidebarInner}
+        {DesktopSidebar}
       </aside>
 
-      {/* Mobile: floating menu button */}
-      <div className="md:hidden fixed left-4 bottom-4 z-50">
-        <button
-          onClick={() => setDrawerOpen(true)}
-          aria-expanded={drawerOpen}
-          aria-controls="mobile-sidebar"
-          className="bg-white/95 backdrop-blur border border-slate-200 rounded-full px-4 py-3 shadow-md text-sm"
-          title="Open menu"
-        >
-          <FaBars className="w-5 h-5" />
-        </button>
-      </div>
+      {/* Mobile Bottom Navigation */}
+      {MobileBottomNav}
 
-      {/* Mobile slide-over */}
-      <div
-        id="mobile-sidebar"
-        className={`fixed inset-0 z-50 ${drawerOpen ? "pointer-events-auto" : "pointer-events-none"}`}
-        aria-hidden={!drawerOpen}
-      >
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${drawerOpen ? "opacity-100" : "opacity-0"}`}
-          onClick={() => setDrawerOpen(false)}
-        />
-        <div
-          className={`absolute left-0 top-0 bottom-0 bg-card shadow-xl transform transition-transform ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
-          style={{ width: "min(88vw, 340px)" }}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="p-6 h-full overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <img src={logo} alt="Eldady Logo" className="w-20 h-auto object-contain" />
-              <button onClick={() => setDrawerOpen(false)} className="text-gray-600 px-2 py-1">
-                Close
-              </button>
-            </div>
-
-            {SidebarInner}
-          </div>
-        </div>
-      </div>
-
-      {/* Shopping Cart & Post Modal (unchanged) */}
+      {/* Shopping Cart & Post Modal */}
       <ShoppingCart isOpen={showCart} onClose={() => setShowCart(false)} />
       <PostProductModal isOpen={showPostModal} onClose={() => setShowPostModal(false)} />
     </>
