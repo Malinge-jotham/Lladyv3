@@ -95,12 +95,16 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      {/* Sidebar - hidden on mobile, visible on desktop */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
 
-      {/* Main content area with adjusted margins */}
-      <div className="flex-1 ml-20 mr-64">
-        <div className="flex justify-center">
-          <div className="w-full max-w-2xl border-x border-gray-200 min-h-screen bg-white">
+      {/* Main content area - full width on mobile, adjusted margins on desktop */}
+      <div className="flex-1 md:ml-20 lg:mr-64 w-full">
+        <div className="flex justify-center w-full">
+          {/* Full width on mobile, constrained width on desktop */}
+          <div className="w-full max-w-2xl md:border-x md:border-gray-200 min-h-screen bg-white">
             {/* Header */}
             <div className="sticky top-0 bg-card/80 backdrop-blur-sm border-b border-border p-4" data-testid="feed-header">
               <div className="flex justify-between items-center">
@@ -119,10 +123,10 @@ export default function Home() {
             {/* Product Posts Feed */}
             <div className="divide-y divide-border" data-testid="product-feed">
               {productsLoading ? (
-                <div className="space-y-6 p-6">
+                <div className="space-y-6 p-4 md:p-6">
                   {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="p-6">
-                      <CardContent className="space-y-4">
+                    <Card key={i} className="p-4 md:p-6">
+                      <CardContent className="space-y-4 p-0">
                         <div className="flex space-x-3">
                           <Skeleton className="w-10 h-10 rounded-full" />
                           <div className="space-y-2 flex-1">
@@ -137,7 +141,7 @@ export default function Home() {
                   ))}
                 </div>
               ) : error && isUnauthorizedError(error as Error) ? (
-                <div className="p-12 text-center">
+                <div className="p-8 md:p-12 text-center">
                   <p className="text-destructive">Your session has expired. Redirecting to login...</p>
                 </div>
               ) : products && products.length > 0 ? (
@@ -145,7 +149,7 @@ export default function Home() {
                   <ProductPost key={product.id} product={product} />
                 ))
               ) : (
-                <div className="p-12 text-center text-muted-foreground" data-testid="empty-feed">
+                <div className="p-8 md:p-12 text-center text-muted-foreground" data-testid="empty-feed">
                   <p className="mb-4">No products found.</p>
                   <p>Start following users or explore trending products!</p>
                 </div>
@@ -155,7 +159,10 @@ export default function Home() {
         </div>
       </div>
 
-      <RightSidebar />
+      {/* Right Sidebar - hidden on mobile, visible on large screens */}
+      <div className="hidden lg:block">
+        <RightSidebar />
+      </div>
     </div>
   );
 }
