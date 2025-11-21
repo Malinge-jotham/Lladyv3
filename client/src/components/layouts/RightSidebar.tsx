@@ -16,9 +16,9 @@ const stellaKB = {
       "Hello! How can I help you today?",
       "Hey! Great to see you here.",
       "Good morning! Hope your day is going well. 🌞",
-      "Good afternoon! How’s your day so far?",
+      "Good afternoon! How's your day so far?",
       "Good evening! Ready to explore some fashion?",
-      "I’m doing great, thanks for asking! How about you?",
+      "I'm doing great, thanks for asking! How about you?",
       "All good here, what about you?",
       "Yo! 😎",
       "Sup! How can I assist?",
@@ -128,7 +128,7 @@ const getStellaResponse = (message: string): string => {
   if (lowerMsg.includes("fashion seasons")) return "Fashion seasons: " + stellaKB.fashion_trivia.fashion_seasons.join(", ");
   if (lowerMsg.includes("sustainable")) return stellaKB.fashion_trivia.sustainable_fashion;
   if (lowerMsg.includes("fun fact")) return stellaKB.fashion_trivia.fun_facts[Math.floor(Math.random() * stellaKB.fashion_trivia.fun_facts.length)];
-//check
+
   // Advice
   if (lowerMsg.includes("interview")) return stellaKB.fashion_advice.interview;
   if (lowerMsg.includes("jeans")) return "Ways to style jeans:\n" + stellaKB.fashion_advice.styling_jeans.join("\n");
@@ -140,7 +140,7 @@ const getStellaResponse = (message: string): string => {
   if (lowerMsg.includes("payment")) return "Payment methods:\n" + stellaKB.shopping_process.payment_methods.join("\n");
   if (lowerMsg.includes("time")) return stellaKB.shopping_process.delivery_time;
 
-  return "Hmm 🤔 I’m Stella, Eldady’s fashion assistant. That’s a bit tricky! You can also reach us at 📧 support@eldady.com or 📱 WhatsApp +254-700-123456.";
+  return "Hmm 🤔 I'm Stella, Eldady's fashion assistant. That's a bit tricky! You can also reach us at 📧 support@eldady.com or 📱 WhatsApp +254-700-123456.";
 };
 
 export default function RightSidebar() {
@@ -170,9 +170,6 @@ export default function RightSidebar() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // mobile / tablet panel state
-  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -214,7 +211,7 @@ export default function RightSidebar() {
     }
   };
 
-  // Panel content reused for desktop aside and slide-over
+  // Panel content for desktop aside only
   const panelContent = (
     <>
       {/* Search */}
@@ -335,7 +332,7 @@ export default function RightSidebar() {
 
   return (
     <>
-      {/* Desktop / large screens: right aside */}
+      {/* Desktop / large screens: right aside - hidden on mobile */}
       <aside
         className="hidden lg:flex flex-col fixed right-0 top-0 h-screen bg-white p-4 overflow-y-auto border-l border-border"
         style={{ width: "clamp(220px, 18vw, 360px)" }}
@@ -359,61 +356,7 @@ export default function RightSidebar() {
         </div>
       </aside>
 
-      {/* Tablet / Mobile: small "Details" button (positioned left of chat button) */}
-      <div className="lg:hidden fixed bottom-6 right-20 z-40">
-        <button
-          onClick={() => setPanelOpen(true)}
-          className="bg-white/95 backdrop-blur border border-slate-200 rounded-full px-3 py-3 shadow-md text-sm flex items-center gap-2"
-          aria-controls="right-panel"
-          aria-expanded={panelOpen}
-          title="Open details"
-        >
-          <FaBars className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Slide-over panel for tablet/mobile */}
-      <div
-        id="right-panel"
-        className={`fixed inset-0 z-50 ${panelOpen ? "pointer-events-auto" : "pointer-events-none"}`}
-        aria-hidden={!panelOpen}
-      >
-        {/* overlay */}
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${panelOpen ? "opacity-100" : "opacity-0"}`}
-          onClick={() => setPanelOpen(false)}
-        />
-
-        {/* panel */}
-        <div
-          className={`absolute right-0 top-0 bottom-0 bg-white shadow-xl transform transition-transform ${panelOpen ? "translate-x-0" : "translate-x-full"}`}
-          style={{ width: "min(92vw, 360px)" }}
-          role="dialog"
-        >
-          <div className="p-4 h-full overflow-y-auto flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-lg font-semibold">Details</div>
-              <button onClick={() => setPanelOpen(false)} className="text-gray-600 px-2 py-1">Close</button>
-            </div>
-
-            <div className="flex-1">{panelContent}</div>
-
-            <div className="py-4 border-t border-border mt-4 text-center text-xs text-muted-foreground">
-              <div className="mb-2">© {new Date().getFullYear()} Ldady. All Rights Reserved.</div>
-              <div className="flex justify-center space-x-4">
-                <Link href="/terms-of-service">
-                  <span className="hover:text-foreground cursor-pointer transition-colors">Terms of Service</span>
-                </Link>
-                <Link href="/privacy-policy">
-                  <span className="hover:text-foreground cursor-pointer transition-colors">Privacy Policy</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Stella Button (keeps original behavior, responsive sizing) */}
+      {/* Floating Stella Button (responsive sizing) */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
         className="fixed bottom-6 right-6 bg-primary text-white p-3 sm:p-4 rounded-full shadow-lg hover:bg-primary/90 transition z-50"
